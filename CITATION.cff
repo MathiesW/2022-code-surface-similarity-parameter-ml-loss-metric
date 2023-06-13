@@ -1,0 +1,39 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: Surface Similarity Parameter machine learning loss metric
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - given-names: Mathies
+    family-names: Wedler
+    email: mathies.wedler@tuhh.de
+    affiliation: 'M-14, TUHH'
+    orcid: 'https://orcid.org/0000-0002-2809-2678'
+  - given-names: Svenja
+    family-names: Ehlers
+    orcid: 'https://orcid.org/0000-0002-3084-9086'
+    affiliation: 'M-14, TUHH'
+identifiers:
+  - type: doi
+    value: 10.5281/zenodo.8032832
+    description: generated with Zenodo
+repository-code: >-
+  https://github.com/MathiesW/2022-code-surface-similarity-parameter-ml-loss-metric
+url: >-
+  https://github.com/MathiesW/2022-code-surface-similarity-parameter-ml-loss-metric
+abstract: >-
+  Surface Similarity Parameter machine learning loss metric
+  for oscillatory spatio-temporal data. Implementations for
+  TensorFlow and Pytorch for one- and two-dimensional data
+keywords:
+  - deep learning
+  - machine learning
+  - loss function
+  - tensorflow
+  - pytorch
+  - error metric
+license: GPL-3.0
