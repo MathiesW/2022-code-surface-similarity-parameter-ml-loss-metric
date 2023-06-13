@@ -1,3 +1,19 @@
+"""
+%---------------------------------------------------------------------------------------------
+% For Paper,
+% "Surface Similarity Parameter: A new machine learning loss metric for oscillatory spatio-temporal data"
+% by Mathies Wedler and Merten Stender and Marco Klein and Svenja Ehlers and Norbert Hoffmann
+% Copyright (c) Dynamics Group, Hamburg University of Technology. All rights reserved.
+% Licensed under the GPLv3. See LICENSE in the project root for license information.
+% Method is based on the work
+% "Marc Perlin and Miguel D. Bustamante,
+% A robust quantitative comparison criterion of two signals based on the Sobolev norm of their difference,
+% Journal of Engineering Mathematics, volume 101,
+% DOI 10.1007/s10665-016-9849-7"
+%--------------------------------------------------------------------------------------------
+"""
+
+
 from abc import ABC
 import tensorflow as tf
 import numpy as np
