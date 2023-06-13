@@ -1,6 +1,5 @@
 # Surface Similarity Parameter machine learning loss metric for oscillatory spatio-temporal data
-
-##
+[![DOI](https://zenodo.org/badge/653051819.svg)](https://zenodo.org/badge/latestdoi/653051819)
 
 ## General
 This repository contains the code for the Surface Similarity Parameter (SSP) loss metric proposed in
