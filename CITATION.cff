@@ -13,9 +13,23 @@ authors:
     email: mathies.wedler@tuhh.de
     affiliation: 'M-14, TUHH'
     orcid: 'https://orcid.org/0000-0002-2809-2678'
+  - given-names: Merten
+    family-names: Stender
+    email: merten.stender@tu-berlin.de
+    affiliation: 'Cyber-Physical Systems in Mechanical Engineering, TU Berlin'
+    orcid: 'https://orcid.org/0000-0002-0888-8206'
+  - given-names: Marco
+    family-names: Klein
+    email: marco.klein@dlr.de
+    affiliation: 'Institut für Maritime Energiesysteme, Deutsches Zentrum für Luft- und Raumfahrt (DLR)'
+    orcid: 'https://orcid.org/0000-0003-2867-7534'
   - given-names: Svenja
     family-names: Ehlers
     orcid: 'https://orcid.org/0000-0002-3084-9086'
+    affiliation: 'M-14, TUHH'
+  - given-names: Norbert
+    family-names: Hoffmann
+    orcid: 'https://orcid.org/0000-0003-2074-3170'
     affiliation: 'M-14, TUHH'
 identifiers:
   - type: doi
