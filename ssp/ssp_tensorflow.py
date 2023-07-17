@@ -66,7 +66,6 @@ class _SurfaceSimilarityParameterBase(tf.keras.losses.Loss, ABC):
 
     @tf.function
     def call(self, y_true: tf.Tensor, y_pred: tf.Tensor) -> tf.Tensor:
-        assert y_true.shape == y_pred.shape, f'Shape of tensors do not match: {y_true.shape} vs {y_pred.shape}'
 
         y_true_f = self.my_fft(tf.cast(y_true, dtype=tf.complex64))
         y_pred_f = self.my_fft(tf.cast(y_pred, dtype=tf.complex64))
@@ -110,7 +109,6 @@ class _SurfaceSimilarityParameterLowPassBase(_SurfaceSimilarityParameterBase):
 
     @tf.function
     def call(self, y_true: tf.Tensor, y_pred: tf.Tensor) -> tf.Tensor:
-        assert y_true.shape == y_pred.shape, f'Shape of tensors do not match: {y_true.shape} vs {y_pred.shape}'
         y_true = tf.cast(y_true, dtype=tf.complex64)
         y_pred = tf.cast(y_pred, dtype=tf.complex64)
 
