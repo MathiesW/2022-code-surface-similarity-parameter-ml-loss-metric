@@ -51,14 +51,14 @@ class TestSurfaceSimilarityParameter(TestCase):
         # define ssp with static filter
         ssp = SurfaceSimilarityParameterLowPass(k=k, k_filter=10, lowpass='static')
 
-        # check if static filter is defined in __init__
-        self.assertIsNotNone(ssp.static_filter)
+        # # check if static filter is defined in __init__
+        # self.assertIsNotNone(ssp.static_filter)
 
         # check if ground truth signal is filtered
         self.assertNotEqual(ssp(y, y).numpy(), 0.0)
 
-        # finally plot filter
-        self.plot_filter(x=x, y=y, ssp=ssp)
+        # # finally plot filter
+        # self.plot_filter(x=x, y=y, ssp=ssp)
 
     def test_adaptive_filter(self):
         x, y, k = self.get_signal()
@@ -67,10 +67,10 @@ class TestSurfaceSimilarityParameter(TestCase):
         ssp = SurfaceSimilarityParameterLowPass(k=k, k_filter=2.5, lowpass='adaptive')
 
         # check if ground truth signal is filtered
-        self.assertNotEqual(ssp(y, y), 0)
+        self.assertNotEqual(ssp(y, y), 0.0)
 
-        # finally plot filter
-        self.plot_filter(x=x, y=y, ssp=ssp)
+        # # finally plot filter
+        # self.plot_filter(x=x, y=y, ssp=ssp)
 
     @staticmethod
     def get_signal() -> tuple:

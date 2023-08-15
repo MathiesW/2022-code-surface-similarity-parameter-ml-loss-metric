@@ -92,19 +92,13 @@ class _SurfaceSimilarityParameterLowPassBase(_SurfaceSimilarityParameterBase):
 
         self.k = tf.cast(k, dtype=tf.float32)
         self.p = tf.cast(p, dtype=tf.float32)
+        self.lowpass = lowpass
+        self.k_filter = k_filter or (6.0 if self.lowpass == 'adaptive' else 2.0)
 
-        if lowpass == 'static':
-            self.k_filter = k_filter or 2.0  # Hz
-            self.static_filter = self.get_static_filter()
-
-        if lowpass == 'adaptive':
-            self.k_filter = k_filter or 6.0
-            self.static_filter = None
-
-    def get_adaptive_filter(self, y_f: tf.Tensor) -> tf.Tensor:
+    def get_k_hat(self, y_f: tf.Tensor) -> tf.Tensor:
         return NotImplemented
 
-    def get_static_filter(self) -> tf.Tensor:
+    def apply_filter(self, y_f: tf.Tensor) -> tf.Tensor:
         return NotImplemented
 
     @tf.function
@@ -116,7 +110,7 @@ class _SurfaceSimilarityParameterLowPassBase(_SurfaceSimilarityParameterBase):
         y_pred_f = self.my_fft(tf.expand_dims(y_pred, axis=0) if tf.rank(y_pred) == self.dimension else y_pred)
 
         # apply filter to Fourier spectrum of ground truth data
-        y_true_f *= self.get_adaptive_filter(y_true_f) if self.static_filter is None else self.static_filter
+        y_true_f = self.apply_filter(y_true_f)
 
         return tf.math.divide_no_nan(
             self.sobolev_norm(tf.subtract(y_true_f, y_pred_f)),
@@ -164,7 +158,22 @@ class SurfaceSimilarityParameterLowPass(_SurfaceSimilarityParameterLowPassBase):
         """
         super().__init__(dimension=1, k=k, k_filter=k_filter, lowpass=lowpass, p=p, **kwargs)
 
-    def get_adaptive_filter(self, y_f: tf.Tensor) -> tf.Tensor:
+    # def apply_adaptive_filter(self, y_f: tf.Tensor) -> tf.Tensor:
+    #     spec = tf.cast(tf.abs(y_f), dtype=tf.float32) ** self.p
+    #     kp = tf.cast(
+    #         tf.divide(
+    #             self.trapezoidal_tf(tf.abs(self.k * spec)),
+    #             self.trapezoidal_tf(spec)
+    #         ), dtype=tf.float32
+    #     )
+    #
+    #     k_hat = tf.divide(tf.expand_dims(self.k, axis=0), tf.expand_dims(kp, axis=1))
+    #
+    #     return tf.where(tf.greater_equal(tf.abs(k_hat), self.k_filter), 0 + 0j, y_f)
+    #
+    # def apply_static_filter(self, y_f: tf.Tensor) -> tf.Tensor:
+    #     return tf.where(tf.greater_equal(tf.abs(self.k), self.k_filter), 0 + 0j, y_f)
+    def get_k_hat(self, y_f: tf.Tensor) -> tf.Tensor:
         spec = tf.cast(tf.abs(y_f), dtype=tf.float32) ** self.p
         kp = tf.cast(
             tf.divide(
@@ -172,19 +181,14 @@ class SurfaceSimilarityParameterLowPass(_SurfaceSimilarityParameterLowPassBase):
                 self.trapezoidal_tf(spec)
             ), dtype=tf.float32
         )
+        return tf.divide(tf.expand_dims(self.k, axis=0), tf.expand_dims(kp, axis=1))
 
-        k_hat = tf.divide(tf.expand_dims(self.k, axis=0), tf.expand_dims(kp, axis=1))
-
-        return tf.cast(
-            tf.where(
-                tf.greater_equal(tf.abs(k_hat), tf.cast(tf.ones_like(k_hat) * self.k_filter, dtype=tf.float32)),
-                0,
-                1
-            ), dtype=tf.complex64
+    def apply_filter(self, y_f):
+        return tf.where(
+            tf.greater_equal(tf.abs(self.get_k_hat(y_f) if self.lowpass == 'adaptive' else self.k), self.k_filter),
+            tf.cast(0 + 0j, dtype=tf.complex64),
+            y_f
         )
-
-    def get_static_filter(self) -> tf.Tensor:
-        return tf.cast(tf.where(tf.greater_equal(tf.abs(self.k), self.k_filter), 0, 1), dtype=tf.complex64)
 
 
 class SurfaceSimilarityParameter2D(_SurfaceSimilarityParameterBase):
@@ -210,30 +214,20 @@ class SurfaceSimilarityParameter2DLowPass(_SurfaceSimilarityParameterLowPassBase
         super().__init__(dimension=2, k=k, k_filter=k_filter, lowpass=lowpass, p=p, **kwargs)
         self.grid = tf.cast(tf.sqrt(sum(tf.square(tf.meshgrid(self.k, self.k)))), dtype=tf.float32)
 
-    def get_adaptive_filter(self, y_f: tf.Tensor) -> tf.Tensor:
-        # for square domain only! augmentation for 2D of eq. 2.14 (Klein)
+    def get_k_hat(self, y_f: tf.Tensor) -> tf.Tensor:
+        s = tf.abs(y_f) ** self.p
         kp = tf.cast(
             tf.divide(
-                self.trapezoidal_tf(self.trapezoidal_tf(tf.abs(self.k * tf.abs(y_f) ** self.p))),
-                self.trapezoidal_tf(self.trapezoidal_tf(tf.abs(y_f) ** self.p))
+                self.trapezoidal_tf(self.trapezoidal_tf(tf.abs(self.k * s))),
+                self.trapezoidal_tf(self.trapezoidal_tf(s))
             ),
             dtype=tf.float32
         )
-        k_hat = tf.divide(tf.expand_dims(self.grid, axis=0), tf.expand_dims(tf.expand_dims(kp, axis=-1), axis=-1))
+        return tf.divide(tf.expand_dims(self.grid, axis=0), tf.expand_dims(tf.expand_dims(kp, axis=-1), axis=-1))
 
-        return tf.cast(
-            tf.where(
-                tf.greater_equal(k_hat, self.k_filter),
-                0,
-                1
-            ), dtype=tf.complex64
+    def apply_filter(self, y_f: tf.Tensor) -> tf.Tensor:
+        return tf.where(
+            tf.greater_equal(tf.abs(self.get_k_hat(y_f) if self.lowpass == 'adaptive' else self.grid), self.k_filter),
+            tf.cast(0 + 0j, dtype=tf.complex64),
+            y_f
         )
-
-    def get_static_filter(self) -> tf.Tensor:
-        return tf.cast(
-                tf.where(
-                    tf.greater_equal(self.grid, self.k_filter),
-                    0,
-                    1
-                ), dtype=tf.complex64
-            )
