@@ -10,22 +10,60 @@ The SSP loss function is a normalized error metric defined by $J_{\mathrm{SSP}}(
 
 
 ## Usage
-The code is provided for TensorFlow (by subclassing ```tf.keras.losses.Loss```) and Pytorch (by subclassing ```nn.module```). All code is written using methods from the respective NN library, such that no additional packages are required to use the SSP loss function for training either a TensorFlow or a Pytorch model.
+The repository contains code 
+- to use the SSP as a [Keras3](https://keras.io/) loss function, and
+- a simpler [numpy](https://numpy.org/) code to use the SSP as a metric.
 
-Both implementations come for one- and two-dimensional data. Besides the *vanilla SSP* which is presented and discussed in the publication, there are modified versions that apply a low pass filter to the ground truth during training. This small change enforces the model to learn a low pass filter, i.e., suppress high frequency noise in order to minimize the loss. Overall, there are
-- ```SurfaceSimilarityParameter```: vanilla SSP for one-dimensional data
-- ```SurfaceSimilarityParameterLowPass```: SSP with either *adaptive* or *static* low pass filter for one-dimensional data
-- ```SurfaceSimilarityParameter2D```: vanilla SSP for two-dimensional data
-- ```SurfaceSimilarityParameter2DLowPass```: SSP with either *adaptive* or *static* low pass filter for two-dimensional data
+The Keras implementation subclasses '''keras.losses.Loss''' and can be used as a loss function in '''model.compile'''.
+This implementation allows the user to define a lowpass filter, which forces the model to suppress the high frequency range either adaptively ('''lowpass="adaptive"''') or with a fixed frequency threshold ('''lowpass="static"''').
+Both options require the definition of a frequency vector '''f''' that matches the shape of the data.
 
-The two-dimensional implementations currently only support squared domains.
+The numpy implementation uses pure numpy code and provides only basic functionality (no filtering etc.).
 
-### Usage example for TensorFlow
-The SSP implementation for TensorFlow can be imported from ```ssp/ssp_tensorflow```. The SSP formulation are written using TensorFlow methods only, such that it works as any other TensorFlow loss metric:
+### Keras example
+Simple example without any lowpass filter
 ```
-from ssp.ssp_tensorflow import SurfaceSimilarityParameter
-ssp = SurfaceSimilarityParameter()
-model.compile(loss=ssp, ...)
+from ssp.keras import SSP1D  # or SSP2D for 2D data
+from keras import Sequential, layers
+
+model = Sequential([layers.Dense(32), layers.Dense(32)])
+model.compile(
+    loss=SSP1D(),
+    ...
+)
+
+model.fit(...)
+```
+
+Example with static lowpass filter
+```
+from ssp.keras import SSP1D  # or SSP2D for 2D data
+from ssp.keras.ops import fftfreq  # method to generate a frequency vector
+from keras import Sequential, layers
+
+f = fftfreq(n=32, d=0.1, rad=False)  # provided the data is one-dimensional time series of length 32 with a temporal sampling of 0.1s
+
+model = Sequential([layers.Dense(32), layers.Dense(32)])
+model.compile(
+    loss=SSP1D(
+        lowpass="static",
+        f=f,
+        f_filter=2.0,  # high frequency range of ground truth greater than f=f_filter is set to 0.0
+    ),
+    ...
+)
+```
+
+### numpy example
+```
+from ssp.numpy import ssp
+import numpy as np
+
+x1 = np.random.random((2, 32, 32))
+x2 = np.random.random((2, 32, 32))
+
+e = ssp(x1, x2)  # result in condensed to a single float value
+e_batched = ssp(x1, x2, batched=True)  # one float value for each item in the batch (first dimension of the data, here, batchsize == 2)
 ```
 
 ## Citation for original paper
