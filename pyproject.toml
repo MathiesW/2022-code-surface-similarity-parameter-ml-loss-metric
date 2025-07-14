@@ -26,4 +26,5 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project.urls]
-Repository = "https://github.com/MathiesW/2022-code-surface-similarity-parameter-ml-loss-metric"
+"Homepage" = "https://github.com/MathiesW/2022-code-surface-similarity-parameter-ml-loss-metric"
+"Source" = "https://github.com/MathiesW/2022-code-surface-similarity-parameter-ml-loss-metric"
