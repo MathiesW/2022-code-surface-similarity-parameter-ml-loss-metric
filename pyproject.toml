@@ -1,0 +1,29 @@
+[project]
+name = "ssp"
+version = "2025.07.14"
+description = "Surface Similarity Parameter for Python"
+authors = [
+  { name="Mathies Wedler", email="mathies.wedler@tuhh.de" },
+]
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+  "numpy"
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "GPL-3.0-or-later",
+    "Operating System :: OS Independent",
+]
+
+[project.optional-dependencies]
+keras = [
+  "keras>=3.0.0"
+]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project.urls]
+Repository = "https://github.com/MathiesW/2022-code-surface-similarity-parameter-ml-loss-metric"
