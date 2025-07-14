@@ -19,7 +19,7 @@ jobs:
       - name: Install dependecies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install build pytest numpy
+          python -m pip install build pytest pytest-env numpy
 
       - name: Run numpy tests
         run: pytest tests/numpy_test.py
