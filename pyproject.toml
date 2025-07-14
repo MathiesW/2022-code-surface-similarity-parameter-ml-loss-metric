@@ -1,5 +1,5 @@
 [project]
-name = "ssp"
+name = "surface-similarity-parameter"
 version = "0.1.3"
 description = "Surface Similarity Parameter for Python"
 authors = [
