@@ -11,19 +11,92 @@ from typing import Tuple
 
 
 class FrequencyLossFunctionWrapper1D(Loss):
+    """
+    Base class FrequencyLossFunctionWrapper1D to implement new loss functions with the option to apply a frequency filter to the ground truth.
+    This frequency filter helps the model to focus on the relevant frequency range without the need to, e.g., remove HF noise in additional preprocessing steps.
+
+    There are two lowpass filters to choose from, the "static" and the "adaptive" lowpass.
+    The "static" lowpass defines a global cut-off frequency at 'f_filter'.
+    The "adaptive" lowpass analyzes the ground truth data, extracts the peak frequency, and sets a dynamic cut-off frequency at for each sample.
+    The parameter 'f_filter' becomes a multiplier for the peak frequency, after which the frequency components are suppressed.
+
+    The definition of a lowpass {"static", "adaptive"} requires a frequency range 'f'.
+    It enables an additional step in the loss calculation, where 
+        1. the ground truth is transformed via 1-D FFT,
+        2. a hard binary lowpass filter is applied to the Fourier spectrum to set all frequencies f>f_filter to 0+0j,
+        3. the filtered ground truth is transformed back to its initial space.
+    If lowpass==None, the FFT calculation is skipped, and no 'f' is required.
+
+    This class inherits from keras.losses.Loss and can thus be used directly in model.compile()
+
+    Parameters
+    ----------
+    fn : callable
+        Definition of the loss function.
+        The function has to accept two tensors (y_true and y_pred) and return a float.
+    lowpass : str, optional {None, "static", "adaptive"}
+        Lowpass filter that is applied to the ground truth in order to suppress the higher frequency range 'f>f_filter'.
+        Defaults to None.
+    f : array_like, optional
+        Frequency range for the data.
+        Is required once a lowpass {"static", "adaptive"} is used.
+        Defaults to None.
+    f_filter : float, optional
+        Threshold for the lowpass filter.
+        With the static lowpass, the ground truth spectrum is set to 0+j0 for 'f>f_filter'.
+        With the adaptive lowpass, the ground truth spectrum is set to 0+j0 for 'f>f_p * f_filter',
+        where f_p is the peak frequency that is automatically derived from the ground truth spectrum.
+        Defaults to 6.0.
+    f_min : float, optional
+        Cap for the lowest peak frequency for cases when the automatic estimation of the peak frequency fails (estimated 'f_p < 0' or 'f_p == NaN').
+        Defaults to 0.0.
+    p : float, optional
+        Exponent to weigh the spectrum towards the peak frequency (for the estimation of the peak frequency), c.f. 
+            Mansard & Funke, "On the fitting of parametric models to measured wave spectra" (1988), and
+            Sobey & Young, "Hurricane Wind Waves---A discrete spectral model" (1986), https://ascelibrary.org/doi/10.1061/%28ASCE%290733-950X%281986%29112%3A3%28370%29
+        Defaults to 7.0.
+    decay_start : int, optional !!!Requires 'UseLossLowpassDecay' callback to work!!!
+        Epoch from which on the lowpass filter is linearly decreased from 0 to 'f_filter'.
+        Defaults to 0.
+    decay_epochs : int, optional !!!Requires 'UseLossLowpassDecay' callback to work!!!
+        Number of epochs over which the lowpass filter is linearly decreased from 0 to 'f_filter'.
+        Defaults to 50.
+    data_format : str, optional {"channels_last", "channels_first"}
+        The ordering of the dimensions in the inputs:
+        "channels_last" corresponds to inputs with shape (batch_size, *dims, channels), 
+        "channels_first" corresponds to inputs with shape (batch_size, channels, *dims).
+        Defaults to "channels_last".
+    reduction : str, optional {"sum_over_batch_size", "None", "auto", "sum"}
+        Type of reduction to apply to the loss.
+        In almost all cases this should be `"sum_over_batch_size"`.
+        Supported options are `"sum"`, `"sum_over_batch_size"` or `None`.
+    name : str, optional
+        Name of the loss function. Name is inhereted from class name if name=None.
+        Defaults to None.
+    **kwargs
+        Additional keyword arguments for fn.
+
+    Notes
+    -----
+    Both the "adaptive" and "static" lowpass filter can be linearly increased from 0 to f_filter over 'decay_epoch' epochs, starting at epoch 'decay_start'.
+    For this to work, the training has to be conducted using the 'UseLossLowpassDecay' callback, which sets the class variable 'self.epoch' to the current training epoch.
+    See examples of SSP1D and SSP2D for a MWE.
+
+    """
+
     def __init__(
         self,
-        fn: callable,
-        lowpass: str = None,
-        f: KerasTensor = None,
-        f_filter: float = 6.0,
-        f_min: float = 0.0,
-        p: float = 7.0,
-        decay_start: int = 0,
-        decay_epochs: int = 50,
-        data_format: str = "channels_last",
-        reduction: str = "sum_over_batch_size",
-        name: str = None,
+        fn,
+        lowpass=None,
+        f=None,
+        f_filter=6.0,
+        f_min=0.0,
+        p=7.0,
+        decay_start=0,
+        decay_epochs=50,
+        data_format="channels_last",
+        reduction="sum_over_batch_size",
+        name=None,
         **kwargs
     ):
         super().__init__(name=name, reduction=reduction, dtype="float32")
@@ -36,10 +109,7 @@ class FrequencyLossFunctionWrapper1D(Loss):
         if (self.lowpass not in ['static', 'adaptive']) & (self.lowpass is not None):
             raise ValueError(f"Unsupported filter type, choose from {['static', 'adaptive']}")
         
-        """
-        For the frequency range calculations (mainly estimation of filter size) only the positive frequency range is required!
-        """
-        # self.use_lowpass: bool = True
+        # For the frequency range calculations (mainly estimation of filter size) only the positive frequency range is required! 
         if f is not None:
             f = ops.convert_to_tensor(f)
         else:
@@ -53,9 +123,9 @@ class FrequencyLossFunctionWrapper1D(Loss):
         self.p = ops.cast(p, dtype=self.dtype)
         
         # decay for loss filter (spectral radius is gradually reduced from self.nx // 2 + 1 (full frequency range) to the spectral radius that corresponds to the calculated lowpass frequency)
-        self.decay_epochs: int = decay_epochs
-        self.decay_start: int = decay_start
-        self.epoch: int = None  # has to be initialized via callback (UseLossLowpassDecay callback)
+        self.decay_epochs = decay_epochs
+        self.decay_start = decay_start
+        self.epoch = None  # has to be initialized via callback (UseLossLowpassDecay callback)
 
         # define callables
         self.fn = fn
@@ -66,7 +136,24 @@ class FrequencyLossFunctionWrapper1D(Loss):
         self.norm: callable = partial(ops.linalg.norm, axis=-1)
         self.expand_dims: callable = ops.expand_dims
 
-    def call(self, y_true: KerasTensor, y_pred: KerasTensor) -> KerasTensor:
+    def call(self, y_true, y_pred):
+        """
+        Call method of FrequencyLossFunctionWrapper1D
+
+        Parameters
+        ----------
+        y_true : KerasTensor
+            Ground truth
+        y_pred : KerasTensor
+            Prediction
+
+        Returns
+        -------
+        loss : KerasTensor
+            The scalar loss calculated from 'y_true' and 'y_pred' using 'self.fn'.
+
+        """
+
         y_true = ops.convert_to_tensor(y_true)  # shape = (batch, x, ch) if data_format == 'channels_last' else (batch, x) or (batch, 1, x)
         y_pred = ops.convert_to_tensor(y_pred)
 
@@ -78,7 +165,8 @@ class FrequencyLossFunctionWrapper1D(Loss):
         y_pred = self.transpose_to_channels_first(y_pred)
 
         if self.lowpass:  # i.e. lowpass is not None
-            """ apply frequency filter to ground truth data
+            """
+            apply frequency filter to ground truth data
             note: we are working with tuples, since keras has no complex dtype
             """
             y_true_real, y_true_imag = self.fft(y_true)
@@ -89,16 +177,22 @@ class FrequencyLossFunctionWrapper1D(Loss):
         return self.fn(y_true, y_pred, **self._fn_kwargs)
     
     # === everything that has to do with filtering / Fourier domain ===
-    def estimate_peak_frequency(self, power_spectrum: KerasTensor) -> KerasTensor:
+    def estimate_peak_frequency(self, power_spectrum):
         """
-        ## Estimate peak frequency from spectrum
-        ---
-        ### Args:
-            power_spectrum (KerasTensor): power spectrum of ground truth
+        Estimate peak frequency from spectrum
+        
+        Parameters
+        ----------
+        power_spectrum : KerasTensor
+            power spectrum of ground truth
 
-        ### Returns:
-            KerasTensor: a tensor with shape==(batch_size, ) with peak frequency (capped at self.f_min) for each sample
+        Returns
+        -------
+        peak_frequency: KerasTensor
+            a tensor with shape==(batch_size, ) with peak frequency (capped at self.f_min) for each sample
+
         """
+
         peak_frequency = ops.divide_no_nan(
             self.norm(ops.abs(ops.multiply(self.f, power_spectrum))),
             self.norm(power_spectrum)
@@ -109,17 +203,24 @@ class FrequencyLossFunctionWrapper1D(Loss):
             peak_frequency
         )
     
-    def get_f_hat(self, real: KerasTensor, imag: KerasTensor) -> KerasTensor:
+    def get_f_hat(self, real, imag):
         """
-        ## Normalize frequency range self.f by estimated peak frequency
-        ---
-        ### Args:
-            real (KerasTensor): real part of Fourier transform of signal y
-            imag (KerasTensor): imaginary part of Fourier transform of signal y
+        Normalize frequency range self.f by estimated peak frequency
+        
+        Parameters
+        ----------
+        real : KerasTensor
+            real part of Fourier transform of signal y
+        imag : KerasTensor
+            imaginary part of Fourier transform of signal y
 
-        ### Returns:
-            k.KerasTensor: frequency range normalized by estimated peak frequency
+        Returns
+        -------
+        f_hat : KerasTensor
+            frequency range normalized by estimated peak frequency
+
         """
+
         ps = self.magnitude(real=real, imag=imag)
         normalized_ps = (ps - ops.min(ps)) / (ops.max(ps) - ops.min(ps))
         
@@ -130,10 +231,10 @@ class FrequencyLossFunctionWrapper1D(Loss):
             self.expand_dims(peak_frequency, axis=-1)  # add space dimension
         )
     
-    def get_frequency_filter(self, real: KerasTensor, imag: KerasTensor) -> KerasTensor:
+    def get_frequency_filter(self, real, imag):
         """
-        The frequency filter is implemented as a tukey window, which is multiplied with the Fourier spectrum.
-        The tukey window requires
+        The frequency filter is implemented as a hard binary window, which is multiplied with the Fourier spectrum.
+        The window requires
             1. the overall length (int), and 
             2. the length of the window, which is here given by the index where the filter frequency exceeds the frequency vector
 
@@ -143,7 +244,16 @@ class FrequencyLossFunctionWrapper1D(Loss):
         
         All calculations are performed on the positive quadrant of f.
         For the adaptive filter, the frequency spectrum scaled by the peak frequency is used.
+
+        Parameters
+        ----------
+        real : KerasTensor
+            real part of Fourier transform of signal y
+        imag : KerasTensor
+            imaginary part of Fourier transform of signal y
+
         """
+
         nx = self.nx // 2
         if self.lowpass == 'adaptive':
             # work with the freqency range normalized by the peak frequency
@@ -172,7 +282,7 @@ class FrequencyLossFunctionWrapper1D(Loss):
             # apply fft shift
             return self.fftshift(freq_filter)
 
-    def lowpass_decay(self, spectral_radius: int) -> int:
+    def lowpass_decay(self, spectral_radius):
         """
         We want to have a linear decrease in spectral radius over the epochs,
         starting from full frequency range to spectral radius.
@@ -181,7 +291,18 @@ class FrequencyLossFunctionWrapper1D(Loss):
             with
                 s: spectral radius(epoch)
                 alpha: slope of linear function, i.e., (epoch - self.decay_start) / self.decay_epochs
+
+        Parameters
+        ----------
+        spectral_radius : int
+            Desired radius of the binary window.
+        
+        Returns
+        -------
+        radius : int
+            Actual radius at self.epoch
         """
+
         if self.epoch is None:
             # callback to steer decay is not active, just return spectral radius
             return spectral_radius
@@ -197,52 +318,93 @@ class FrequencyLossFunctionWrapper1D(Loss):
         alpha = ops.divide(self.epoch - self.decay_start, self.decay_epochs)
         return ops.cast(max_radius + alpha * ops.cast(spectral_radius - max_radius, dtype=alpha.dtype), dtype=spectral_radius.dtype)
     
-    def apply_filter(self, real: KerasTensor, imag: KerasTensor) -> Tuple[KerasTensor, KerasTensor]:
+    def apply_filter(self, real, imag):
         """
-        ## Apply frequency filter
-        ---
-        ### Args:
-            real (KerasTensor): real part of Fourier transform of signal y
-            imag (KerasTensor): imaginary part of Fourier transform of signal y
+        Apply frequency filter
+        
+        Parameters
+        ----------
+        real : KerasTensor
+            real part of Fourier transform of signal y
+        imag : KerasTensor
+            imaginary part of Fourier transform of signal y
 
-        ### Returns:
-            KerasTensor: Fourier transform of signal y with frequencies > f_filter set to (0 + 0j)
+        Returns
+        -------
+        [real, imag] : Tuple[KerasTensor]
+            Fourier transform of signal y with frequencies > f_filter set to (0 + 0j)
         """
         frequency_filter = self.get_frequency_filter(real, imag)
         return ops.multiply(real, frequency_filter), ops.multiply(imag, frequency_filter)
     
-    def transpose_to_channels_first(self, inputs: KerasTensor) -> KerasTensor:
-        if self.data_format == 'channels_first':
-            return inputs
-        
-        shape = ops.shape(inputs)
-        if len(shape) == 2:  # there is no channel dimension!
-            return inputs
-        
-        transpose_axes = list(range(len(shape)))
-        # move channel_dimension to first position after batch size ('channels_first')
-        ch_dim = transpose_axes.pop(-1)
-        transpose_axes.insert(-1, ch_dim)  # NOTE this is only for 1d data; -1 inserts at index -2!
+    def lowpass_fn(self, spectral_radius):
+        """
+        Lowpass function
 
-        return ops.transpose(inputs, axes=transpose_axes)
-    
-    def lowpass_fn(self, spectral_radius: int):
+        Parameters
+        ----------
+        spectral_radius : int
+            Desired radius of the binary window.
+
+        Returns
+        -------
+        hard_lowpass : KerasTensor
+            binary lowpass filter
+
+        """
+
         # adjust spectral radius
         spectral_radius = self.lowpass_decay(spectral_radius=spectral_radius)
         return hard_lowpass(n=self.nx, spectral_radius=spectral_radius)
     
-    def fftshift(self, x: KerasTensor, axis: int = None) -> KerasTensor:
+    def fftshift(self, x, axis=None):
+        """
+        FFT shift
+
+        shifts the FFT spectra
+
+        Parameters
+        ----------
+        x : KerasTensor
+            signal
+        axis : int, optional
+            axis to shift along.
+            Defaults to None.
+
+        Returns
+        -------
+        x_shifted : KerasTensor
+            fft-shifted version of 'x'
+
+        """
+
         return ops.roll(x, shift=self.nx // 2, axis=axis)
     
     @staticmethod
-    def magnitude(real: KerasTensor, imag: KerasTensor):
+    def magnitude(real, imag):
+        """
+        Magnitude of signal
+
+        Parameters
+        ----------
+        real : KerasTensor
+            real part of Fourier transform of signal y
+        imag : KerasTensor
+            imaginary part of Fourier transform of signal y
+
+        Returns
+        -------
+        magnitude : KerasTensor
+            magnitude of spectrum
+
+        """
+
         return ops.sqrt(ops.square(real) + ops.square(imag))
     
     # === serialization ===
     def get_config(self) -> dict:
         base_config: dict = super().get_config()
         config = {
-            # "fn": serialization_lib.serialize_keras_object(self.fn),
             "lowpass": self.lowpass,
             "f": self.tolist(self.f),
             "f_filter": float(self.f_filter),
@@ -259,12 +421,28 @@ class FrequencyLossFunctionWrapper1D(Loss):
     def from_config(cls, config: dict):
         f = config.pop("f")
         f = ops.array(f)
-        # if "fn" in config:
-        #     config = serialization_lib.deserialize_keras_object(config)
         return cls(f=f, **config)
     
     # === helper routines ===
-    def transpose_to_channels_first(self, inputs: KerasTensor) -> KerasTensor:
+    def transpose_to_channels_first(self, inputs):
+        """
+        Transpose input data to data format "channels_first"
+
+        The FFT is by default applied along the last dimension of the data.
+        Therefore, we have to transpose the data from "channels_last" (default) to "channels_first"
+
+        Parameters
+        ----------
+        inputs : KerasTensor
+            input tensor to transpose
+
+        Returns
+        -------
+        transposed_inputs : KerasTensor
+            input tensor in data format "channels_first"
+
+        """
+
         if self.data_format == "channels_first":
             return inputs
         
@@ -285,6 +463,27 @@ class FrequencyLossFunctionWrapper1D(Loss):
     
     @staticmethod
     def tolist(arr: KerasTensor) -> list:
+        """
+        Casts a KerasTensor to a list
+
+        Required for serialization of a KerasTensor.
+
+        Parameters
+        ----------
+        arr : KerasTensor
+            array to be casted to list
+
+        Returns
+        -------
+        l : list
+            arr as (nested) list
+
+        Notes
+        -----
+        Raises RuntimeError when 'torch' backend is used.
+
+        """
+
         if backend() == "tensorflow":
             shape = arr.get_shape()
             if len(shape) == 2:
@@ -300,17 +499,91 @@ class FrequencyLossFunctionWrapper1D(Loss):
 
 
 class FrequencyLossFunctionWrapper2D(FrequencyLossFunctionWrapper1D):
+    """
+    Base class FrequencyLossFunctionWrapper2D to implement new loss functions with the option to apply a frequency filter to the ground truth.
+    This frequency filter helps the model to focus on the relevant frequency range without the need to, e.g., remove HF noise in additional preprocessing steps.
+
+    There are two lowpass filters to choose from, the "static" and the "adaptive" lowpass.
+    The "static" lowpass defines a global cut-off frequency at 'f_filter'.
+    The "adaptive" lowpass analyzes the ground truth data, extracts the peak frequency, and sets a dynamic cut-off frequency at for each sample.
+    The parameter 'f_filter' becomes a multiplier for the peak frequency, after which the frequency components are suppressed.
+
+    The definition of a lowpass {"static", "adaptive"} requires a frequency range 'f'.
+    It enables an additional step in the loss calculation, where 
+        1. the ground truth is transformed via 2-D FFT,
+        2. a hard binary lowpass filter is applied to the Fourier spectrum to set all frequencies f>f_filter to 0+0j,
+        3. the filtered ground truth is transformed back to its initial space.
+    If lowpass==None, the FFT calculation is skipped, and no 'f' is required.
+
+    This class inherits from keras.losses.Loss and can thus be used directly in model.compile()
+
+    Parameters
+    ----------
+    fn : callable
+        Definition of the loss function.
+        The function has to accept two tensors (y_true and y_pred) and return a float.
+    lowpass : str, optional {None, "static", "adaptive"}
+        Lowpass filter that is applied to the ground truth in order to suppress the higher frequency range 'f>f_filter'.
+        Defaults to None.
+    f : array_like, optional
+        Frequency range for the data.
+        Is required once a lowpass {"static", "adaptive"} is used.
+        A 1-D f is automatically casted to a 2-D grid.
+        Defaults to None.
+    f_filter : float, optional
+        Threshold for the lowpass filter.
+        With the static lowpass, the ground truth spectrum is set to 0+j0 for 'f>f_filter'.
+        With the adaptive lowpass, the ground truth spectrum is set to 0+j0 for 'f>f_p * f_filter',
+        where f_p is the peak frequency that is automatically derived from the ground truth spectrum.
+        Defaults to 6.0.
+    f_min : float, optional
+        Cap for the lowest peak frequency for cases when the automatic estimation of the peak frequency fails (estimated 'f_p < 0' or 'f_p == NaN').
+        Defaults to 0.0.
+    p : float, optional
+        Exponent to weigh the spectrum towards the peak frequency (for the estimation of the peak frequency), c.f. 
+            Mansard & Funke, "On the fitting of parametric models to measured wave spectra" (1988), and
+            Sobey & Young, "Hurricane Wind Waves---A discrete spectral model" (1986), https://ascelibrary.org/doi/10.1061/%28ASCE%290733-950X%281986%29112%3A3%28370%29
+        Defaults to 7.0.
+    decay_start : int, optional !!!Requires 'UseLossLowpassDecay' callback to work!!!
+        Epoch from which on the lowpass filter is linearly decreased from 0 to 'f_filter'.
+        Defaults to 0.
+    decay_epochs : int, optional !!!Requires 'UseLossLowpassDecay' callback to work!!!
+        Number of epochs over which the lowpass filter is linearly decreased from 0 to 'f_filter'.
+        Defaults to 50.
+    data_format : str, optional {"channels_last", "channels_first"}
+        The ordering of the dimensions in the inputs:
+        "channels_last" corresponds to inputs with shape (batch_size, *dims, channels), 
+        "channels_first" corresponds to inputs with shape (batch_size, channels, *dims).
+        Defaults to "channels_last".
+    reduction : str, optional {"sum_over_batch_size", "None", "auto", "sum"}
+        Type of reduction to apply to the loss.
+        In almost all cases this should be `"sum_over_batch_size"`.
+        Supported options are `"sum"`, `"sum_over_batch_size"` or `None`.
+    name : str, optional
+        Name of the loss function. Name is inhereted from class name if name=None.
+        Defaults to None.
+    **kwargs
+        Additional keyword arguments for fn.
+
+    Notes
+    -----
+    Both the "adaptive" and "static" lowpass filter can be linearly increased from 0 to f_filter over 'decay_epoch' epochs, starting at epoch 'decay_start'.
+    For this to work, the training has to be conducted using the 'UseLossLowpassDecay' callback, which sets the class variable 'self.epoch' to the current training epoch.
+    See examples of SSP1D and SSP2D for a MWE.
+
+    """
+    
     def __init__(
         self,
-        fn: callable,
-        lowpass: str = None,
-        f: KerasTensor = None,
-        f_filter: float = 6.0,
-        f_min: float = 0.0,
-        p: float = 7.0,
-        data_format: str = "channels_last",
-        reduction: str = "sum_over_batch_size",
-        name: str = None,
+        fn,
+        lowpass=None,
+        f=None,
+        f_filter=6.0,
+        f_min=0.0,
+        p=7.0,
+        data_format="channels_last",
+        reduction="sum_over_batch_size",
+        name=None,
         **kwargs
     ):
         super().__init__(
@@ -341,10 +614,10 @@ class FrequencyLossFunctionWrapper2D(FrequencyLossFunctionWrapper1D):
         self.ny, self.nx = ops.shape(self.f)
 
     # === everything that has to do with filtering / Fourier domain adjusted for 2D ===
-    def get_frequency_filter(self, real: KerasTensor, imag: KerasTensor) -> KerasTensor:
+    def get_frequency_filter(self, real, imag):
         """
-        The frequency filter is implemented as a tukey window, which is multiplied with the Fourier spectrum.
-        The tukey window requires
+        The frequency filter is implemented as a hard binary window, which is multiplied with the Fourier spectrum.
+        The window requires
             1. the overall length (int), and 
             2. the length of the window, which is here given by the index where the filter frequency exceeds the frequency vector
 
@@ -354,7 +627,16 @@ class FrequencyLossFunctionWrapper2D(FrequencyLossFunctionWrapper1D):
         
         All calculations are performed on the positive quadrant of f.
         For the adaptive filter, the frequency spectrum scaled by the peak frequency is used.
+
+        Parameters
+        ----------
+        real : KerasTensor
+            real part of Fourier transform of signal y
+        imag : KerasTensor
+            imaginary part of Fourier transform of signal y
+
         """
+
         nx = self.nx // 2
         ny = self.ny // 2
         if self.lowpass == 'adaptive':
@@ -397,20 +679,38 @@ class FrequencyLossFunctionWrapper2D(FrequencyLossFunctionWrapper1D):
             # apply fft shift
             return self.fftshift(freq_filter)
         
-    def get_config(self) -> dict:
-        """
-        while 2D loss does not support LowpassDecay, this function has to be implemented without arguments
-            decay_epochs
-            decay_start
-        """
-        config: dict = super().get_config()
-        config.pop("decay_epochs", None)
-        config.pop("decay_start", None)
+    # def get_config(self) -> dict:
+    #     """
+    #     while 2D loss does not support LowpassDecay, this function has to be implemented without arguments
+    #         decay_epochs
+    #         decay_start
+    #     """
+    #     config: dict = super().get_config()
+    #     config.pop("decay_epochs")
+    #     config.pop("decay_start")
 
-        return config
+    #     return config
     
     # === helper routines adjusted for 2D ===
-    def transpose_to_channels_first(self, inputs: KerasTensor) -> KerasTensor:
+    def transpose_to_channels_first(self, inputs):
+        """
+        Transpose input data to data format "channels_first"
+
+        The FFT is by default applied along the last dimension of the data.
+        Therefore, we have to transpose the data from "channels_last" (default) to "channels_first"
+
+        Parameters
+        ----------
+        inputs : KerasTensor
+            input tensor to transpose
+
+        Returns
+        -------
+        transposed_inputs : KerasTensor
+            input tensor in data format "channels_first"
+
+        """
+
         if self.data_format == 'channels_first':
             return inputs
         
@@ -434,7 +734,18 @@ class FrequencyLossFunctionWrapper2D(FrequencyLossFunctionWrapper1D):
             with
                 s: spectral radius(epoch)
                 alpha: slope of linear function, i.e., (epoch - self.decay_start) / self.decay_epochs
+
+        Parameters
+        ----------
+        spectral_radius : int
+            Desired radius of the binary window.
+        
+        Returns
+        -------
+        radius : int
+            Actual radius at self.epoch
         """
+        
         if self.epoch is None:
             # callback to steer decay is not active, just return spectral radius
             return spectral_radius
@@ -442,17 +753,49 @@ class FrequencyLossFunctionWrapper2D(FrequencyLossFunctionWrapper1D):
         if self.epoch > (self.decay_start + self.decay_epochs):
             return spectral_radius
         
-        max_radius = ops.cast(ops.round(self.magnitude(self.nx // 2 - 1, self.ny // 2 - 1)), dtype='int32')  # self.nx // 2 - 1  # zero indexing, we need 255 --> positive frequencies only
+        max_radius = ops.cast(ops.round(self.magnitude(self.nx // 2 - 1, self.ny // 2 - 1)), dtype='int32')  # zero indexing, we need positive frequencies only
 
         if self.epoch < self.decay_start:
             return max_radius
         
         alpha = ops.divide(self.epoch - self.decay_start, self.decay_epochs)
-        return ops.cast(max_radius + alpha * ops.cast(spectral_radius - max_radius, dtype=alpha.dtype), dtype=spectral_radius.dtype)
+        return ops.cast(ops.cast(max_radius, dtype=alpha.dtype) + alpha * ops.cast(spectral_radius - max_radius, dtype=alpha.dtype), dtype=spectral_radius.dtype)
     
-    def lowpass_fn(self, spectral_radius: int):
+    def lowpass_fn(self, spectral_radius):
+        """
+        Lowpass function
+
+        Parameters
+        ----------
+        spectral_radius : int
+            Desired radius of the binary window.
+
+        Returns
+        -------
+        hard_lowpass : KerasTensor
+            binary lowpass filter
+
+        """
+
         spectral_radius = self.lowpass_decay(spectral_radius=spectral_radius)
         return circular_hard_lowpass(n=self.nx, spectral_radius=spectral_radius)
     
-    def fftshift(self, x: KerasTensor) -> KerasTensor:
+    def fftshift(self, x):
+        """
+        FFT shift
+
+        shifts the FFT spectra along the last 2 axes
+
+        Parameters
+        ----------
+        x : KerasTensor
+            signal
+
+        Returns
+        -------
+        x_shifted : KerasTensor
+            fft-shifted version of 'x'
+
+        """
+
         return ops.roll(ops.roll(x, shift=self.ny // 2, axis=-2), shift=self.nx // 2, axis=-1)

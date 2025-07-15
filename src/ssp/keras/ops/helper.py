@@ -3,14 +3,27 @@ from keras import KerasTensor
 from math import pi
 
 
-def hard_lowpass(n: int, spectral_radius: int, truly_symmetric: bool = False):
+def hard_lowpass(n, spectral_radius, truly_symmetric=False):
     """
-    1D hard lowpass
-    Args:
-        n: grid size of data
-        spectral_radius: width of lowpass
-        truly_symmetric (bool): if True, ops.linspace is used insted of ops.arange
+    1-D hard lowpass
+
+    Parameters
+    ----------
+    n : int
+        Grid size of the data
+    spectral_radius : int
+        Width of the lowpass
+    truly_symmetric : bool, optional
+        If this is set, ops.linspace is used insted of ops.arange to achieve a truly symmetric filter (for odd n).
+        Defaults to False.
+
+    Returns
+    -------
+    hard_lowpass : array_like
+        Binary 1-D mask [0, ..., 0, 1, ..., 1, 0, ..., 0] of size (n,)
+
     """
+
     if truly_symmetric:
         x = ops.linspace(-n//2, n//2, n)
     else:
@@ -26,14 +39,35 @@ def hard_lowpass(n: int, spectral_radius: int, truly_symmetric: bool = False):
     return hard_lowpass
 
 
-def circular_hard_lowpass(n: int, spectral_radius: int, truly_symmetric: bool = False):
+def circular_hard_lowpass(n, spectral_radius, truly_symmetric=False):
     """
-    2D hard lowpass
-    Args:
-        n: grid size of data
-        spectral_radius: width of lowpass
-        truly_symmetric (bool): if True, ops.linspace is used insted of ops.arange
+    2-D hard lowpass
+
+    Parameters
+    ----------
+    n : int
+        Grid size of the data, square grid (n,n)
+    spectral_radius : int
+        Radius of the lowpass on the (n.n) grid
+    truly_symmetric : bool, optional
+        If this is set, ops.linspace is used insted of ops.arange to achieve a truly symmetric filter (for odd n).
+        Defaults to False.
+
+    Returns
+    -------
+    hard_lowpass : array_like
+        Binary 2-D mask, e.g.,
+        [
+            [0, 0, 1, 0, 0],
+            [0, 1, 1, 1, 0],
+            [1, 1, 1, 1, 1],
+            [0, 1, 1, 1, 0],
+            [0, 0, 1, 0, 0]
+        ]
+        of size (n,n)
+
     """
+
     if truly_symmetric:
         x = ops.linspace(-n//2, n//2, n)
     else:
@@ -49,10 +83,51 @@ def circular_hard_lowpass(n: int, spectral_radius: int, truly_symmetric: bool = 
     return circular_hard_lowpass
 
 
-def fftfreq(n: int, d: float, rad: bool = True) -> KerasTensor:
-    fs = 1 / d
-    df = fs / n
-    fft_freqs = ops.arange(-(n // 2) * df, (n // 2 * df), df)
+def fftfreq(n, d=1, rad=True):
+    """
+    Return the Discrete Fourier Transform sample frequencies.
+
+    The returned float array `f` contains the frequency bin centers in cycles
+    per unit of the sample spacing (with zero at the start).  For instance, if
+    the sample spacing is in seconds, then the frequency unit is cycles/second.
+
+    Given a window length `n` and a sample spacing `d`::
+
+      f = [0, 1, ...,   n/2-1,     -n/2, ..., -1] / (d*n)   if n is even
+      f = [0, 1, ..., (n-1)/2, -(n-1)/2, ..., -1] / (d*n)   if n is odd
+
+    Parameters
+    ----------
+    n : int
+        Window length.
+    d : scalar, optional
+        Sample spacing (inverse of the sampling rate). Defaults to 1.
+    rad : bool, optional
+        If this is set, the angular frequency omega=2*pi*f is returned.
+        Defaults to False.
+
+    Returns
+    -------
+    f : array_like
+        Array of length `n` containing the sample frequencies.
+
+    Examples
+    --------
+    >>> from keras import ops
+    >>> from ssp.keras.ops import fft, fftfreq
+    >>> signal = ops.array([-2, 8, 6, 4, 1, 0, 3, 5], dtype=float)
+    >>> fourier = fft(signal)
+    >>> n = ops.size(signal)
+    >>> timestep = 0.1
+    >>> freq = fftfreq(n, d=timestep)
+    >>> freq
+    array([ 0.  ,  1.25,  2.5 , ..., -3.75, -2.5 , -1.25])
+
+    """
+
+    fs = 1.0 / d
+    df = fs / ops.cast(n, float)
+    fft_freqs = ops.arange(-ops.cast(n // 2, float) * df, ops.cast(n // 2, float) * df, df)
 
     if rad:
         fft_freqs *= (2 * pi)
@@ -61,7 +136,10 @@ def fftfreq(n: int, d: float, rad: bool = True) -> KerasTensor:
 
 
 def squeeze_or_expand_to_same_rank(x1: KerasTensor, x2: KerasTensor, axis: int = -1, expand_rank_1: bool = True) -> tuple:
-    """Squeeze/expand last dim if ranks differ from expected by exactly 1."""
+    """
+    Squeeze/expand last dim if ranks differ from expected by exactly 1.
+    """
+
     x1_rank = len(x1.shape)
     x2_rank = len(x2.shape)
     if x1_rank == x2_rank:
