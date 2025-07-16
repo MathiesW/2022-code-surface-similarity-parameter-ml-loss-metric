@@ -6,64 +6,120 @@ This repository contains the code for the Surface Similarity Parameter (SSP) los
 
 Wedler, M., Stender, M., Klein, M., Ehlers, S. and Hoffmann, N., 2022,  "Surface Similarity Parameter: A new machine learning loss metric for oscillatory spatio-temporal data". Neural Networks 156, 123--134. DOI: https://doi.org/10.1016/j.neunet.2022.09.023
 
-The SSP loss function is a normalized error metric defined by $J_{\mathrm{SSP}}(\mathbf{y},\hat{\mathbf{y}})=\frac{\sqrt{\int|F_{\mathbf{y}}(\mathbf{k}) - F_{\hat{\mathbf{y}}}(\mathbf{k})|^2d\mathbf{k}}}{\sqrt{\int|F_{\mathbf{y}}(\mathbf{k})|^2d\mathbf{k}} + \sqrt{\int|F_{\hat{\mathbf{y}}}(\mathbf{k})|^2d\mathbf{k}}}\in[0,1]$. Since the error is derived in the complex Fourier Space, the SSP loss function penalizes deviations in amplitude, frequency and phase at once.
+The SSP for continuous signals is a normalized error metric 
 
+$\mathrm{SSP}(\mathbf{y},\hat{\mathbf{y}})=\frac{\sqrt{\int|F_{\mathbf{y}}(\mathbf{k}) - F_{\hat{\mathbf{y}}}(\mathbf{k})|^2d\mathbf{k}}}{\sqrt{\int|F_{\mathbf{y}}(\mathbf{k})|^2d\mathbf{k}} + \sqrt{\int|F_{\hat{\mathbf{y}}}(\mathbf{k})|^2d\mathbf{k}}}\in[0,1]$
 
-## Usage
-The repository contains code 
-- to use the SSP as a [Keras3](https://keras.io/) loss function, and
-- a simpler [numpy](https://numpy.org/) code to use the SSP as a metric.
+originally introduced by Perlin & Bustamante (https://link.springer.com/article/10.1007/s10665-016-9849-7).
+The SSP calculates the deviation between the signals $y$ and $\hat{y}$ in the complex Fourier domain, such that deviations in magnitude and phase are inherently penalized in a single metric.
+Being a normalized error, the SSP is defined in the range [0, 1], where
+- $\mathrm{SSP}=0$ indicates perfect agreement, and
+- $\mathrm{SSP}=1$ indicates perfect *disagreement* among the signals.
 
-The Keras implementation subclasses '''keras.losses.Loss''' and can be used as a loss function in '''model.compile'''.
-This implementation allows the user to define a lowpass filter, which forces the model to suppress the high frequency range either adaptively ('''lowpass="adaptive"''') or with a fixed frequency threshold ('''lowpass="static"''').
-Both options require the definition of a frequency vector '''f''' that matches the shape of the data.
+Perfect disagreement means that either $\hat{y}=-y$, or $\hat{y}=0$ while $y\neq 0$
 
-The numpy implementation uses pure numpy code and provides only basic functionality (no filtering etc.).
+When used as a machine learning (ML) loss function, this aspect renders the SSP beneficial for training ML models on oscillatory spatio-temporal data. For the model to reduce the loss, the prediction has to be improved in terms of magnitude and phase. It can be shown that this results in sharper gradients, which allows the optimizer to converge faster to a better local minimum.
 
-### Keras example
-Simple example without any lowpass filter
+This package contains
+- a very basic [numpy](https://numpy.org/) implementation, and
+- a more complex [Keras3](https://keras.io/) SSP loss function.
+
+### Optional lowpass filter in the loss function
+The Keras3 loss function offers two different optional lowpass filters, a *static* and an *adaptive* one.
+The lowpass filter is applied to the ground truth only within the loss function.
+This way, the ML model is forced to suppress the high-frequency range in order to reduce the loss,
+and effectively learns a lowpass filter behavior.
+This is beneficial when
+- the relevant dynamics are within a certain frequency band, or
+- the model is trained on noisy (measurement) data.
+
+## Installation
+The package is hosted on [PyPI.org](https://pypi.org/project/surface-similarity-parameter/) and can be installed via pip
 ```
-from ssp.keras import SSP1D  # or SSP2D for 2D data
-from keras import Sequential, layers
+$ pip install surface-similarity-parameter
+```
+Optionally, the most recent version of [Keras3](https://keras.io/) can be automatically installed alongside using the option `[keras]`
+```
+$ pip install surface-similarity-parameter[keras]
+```
+Note that the Keras backend
+- [Tensorflow](https://www.tensorflow.org/), or
+- [JAX](https://docs.jax.dev/en/latest/)
 
-model = Sequential([layers.Dense(32), layers.Dense(32)])
-model.compile(
-    loss=SSP1D(),
-    ...
-)
+has to be manually installed. **At the moment, there is no implementation for the `'torch'` backend**.
 
-model.fit(...)
+
+## Usage examples
+Please note that more elaborate examples for each class or method can be found in the docstring of the respective class or method.
+
+### Numpy example (metric only)
+Let's start with a very basic call of the numpy implementation on two random arrays.
+```
+>>> from ssp.numpy import ssp
+>>> import numpy as np
+>>> np.random.seed(0)  # for deterministic results
+>>> y1 = np.random.random((2, 32))
+>>> y2 = np.random.random((2, 32))
+>>> ssp(y1, y2)  # some value between 0 and 1
+np.float64(0.35119514129237195)
+>>> ssp(y1, y1)
+np.float64(0.0)
+>>> ssp(y1, -y1)
+np.float64(1.0)
+>>> ssp(y1, np.zeros_like(y1))
+np.float64(1.0)
 ```
 
-Example with static lowpass filter
+With the option `batched=True`, the SSP operates batch-wise and returns a result for each signal in a batch:
 ```
-from ssp.keras import SSP1D  # or SSP2D for 2D data
-from ssp.keras.ops import fftfreq  # method to generate a frequency vector
-from keras import Sequential, layers
-
-f = fftfreq(n=32, d=0.1, rad=False)  # provided the data is one-dimensional time series of length 32 with a temporal sampling of 0.1s
-
-model = Sequential([layers.Dense(32), layers.Dense(32)])
-model.compile(
-    loss=SSP1D(
-        lowpass="static",
-        f=f,
-        f_filter=2.0,  # high frequency range of ground truth greater than f=f_filter is set to 0.0
-    ),
-    ...
-)
+>>> from ssp.numpy import ssp
+>>> import numpy as np
+>>> np.random.seed(0)  # for deterministic results
+>>> y1 = np.random.random((2, 32))
+>>> y2 = np.random.random((2, 32))
+>>> ssp(y1, y2, batched=True)
+array([0.34864963, 0.35827101])
+>>> ssp(y1, y1, batched=True)
+array([0., 0.])
+>>> ssp(y1, -y1, batched=True)
+array([1., 1.])
+>>> ssp(y1, np.zeros_like(y1), batched=True)
+array([1., 1.])
 ```
 
-### numpy example
+### Keras example (SSP as an ML loss function)
+Again, let's start with a very basic usage of the SSP as a Keras loss function. 
+In the following example, a Sequential model is defined, build, compiled, and trained with the SSP as the loss function.
 ```
-from ssp.numpy import ssp
-import numpy as np
+>>> from ssp.keras import SSP1D
+>>> from keras import ops, Sequential, layers
+>>> from math import pi
+>>> t = ops.arange(0, 2 * pi, 2 * pi / 512)
+>>> y = ops.expand_dims(ops.sin(t), axis=0)  # shape (1, 512)
+>>> x = ops.ones((1, 32))  # some input data with shape (1, 32)
+>>> model = Sequential([layers.Dense(64), layers.Dense(512)])
+>>> model.build(input_shape=x.shape)
+>>> model.compile(optimizer="adam", loss=SSP1D(lowpass="static", f=f, f_filter=2.0))
+>>> model.fit(x=x, y=y, epochs=1)
+```
 
-x1 = np.random.random((2, 32, 32))
-x2 = np.random.random((2, 32, 32))
-
-e = ssp(x1, x2)  # result in condensed to a single float value
-e_batched = ssp(x1, x2, batched=True)  # one float value for each item in the batch (first dimension of the data, here, batchsize == 2)
+The optional lowpass filter can help the model to focus on the relevant frequency range of the data, or omit high-frequency noise (like, e.g., in raw measurement data).
+In the following example, a `static` lowpass filter with a threshold at `f_filter=2.0` is used.
+When using a lowpass filter, the SSP loss function requires the FFT frequencies `f`,
+which can be generated using the `ssp.keras.ops.fftshift` method, which strongly aligns with [numpy.fft.fftshift](https://numpy.org/doc/stable/reference/generated/numpy.fft.fftshift.html), but offers the optional argument `rad` to return the FFT frequencies in terms of rad instead of Hz (multiplication by $2\pi$).
+```
+>>> from ssp.keras import SSP1D
+>>> from ssp.keras.ops import fftfreq
+>>> from keras import ops, Sequential, layers
+>>> from math import pi
+>>> t = ops.arange(0, 2 * pi, 2 * pi / 512)
+>>> f = fftfreq(n=512, d=2 * pi / 512)
+>>> y = ops.expand_dims(ops.sin(t), axis=0)  # shape (1, 512)
+>>> x = ops.ones((1, 32))  # some input data with shape (1, 32)
+>>> model = Sequential([layers.Dense(64), layers.Dense(512)])
+>>> model.build(input_shape=x.shape)
+>>> model.compile(optimizer="adam", loss=SSP1D(lowpass="static", f=f, f_filter=2.0))
+>>> model.fit(x=x, y=y, epochs=1)
 ```
 
 ## Citation for original paper
