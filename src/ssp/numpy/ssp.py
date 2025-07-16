@@ -75,6 +75,7 @@ def ssp(y1, y2, batched=False):
     array([1., 1.])
     >>> ssp(y1, np.zeros_like(y1), batched=True)
     array([1., 1.])
+    
     """
     
     assert y1.shape == y2.shape, f"Shapes have to match, received {y1.shape} and {y2.shape}"
