@@ -1,5 +1,8 @@
 # Surface Similarity Parameter machine learning loss metric for oscillatory spatio-temporal data
 [![DOI](https://zenodo.org/badge/653051819.svg)](https://zenodo.org/badge/latestdoi/653051819)
+![Tests](https://github.com/MathiesW/2022-code-surface-similarity-parameter-ml-loss-metric/actions/workflows/release.yaml/badge.svg)
+![PyPI](https://img.shields.io/pypi/v/surface-similarity-parameter)
+![License](https://img.shields.io/github/license/MathiesW/2022-code-surface-similarity-parameter-ml-loss-metric)
 
 ## General
 This repository contains the code for the Surface Similarity Parameter (SSP) loss metric proposed in
@@ -60,13 +63,13 @@ Let's start with a very basic call of the numpy implementation on two random arr
 >>> np.random.seed(0)  # for deterministic results
 >>> y1 = np.random.random((2, 32))
 >>> y2 = np.random.random((2, 32))
->>> ssp(y1, y2)  # some value between 0 and 1
+>>> ssp(y1, y2)  # some value between 0.0 and 1.0
 np.float64(0.35119514129237195)
->>> ssp(y1, y1)
+>>> ssp(y1, y1)  # should be 0.0
 np.float64(0.0)
->>> ssp(y1, -y1)
+>>> ssp(y1, -y1)  # should be 1.0
 np.float64(1.0)
->>> ssp(y1, np.zeros_like(y1))
+>>> ssp(y1, np.zeros_like(y1))  # should be 1.0
 np.float64(1.0)
 ```
 
