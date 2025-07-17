@@ -1,6 +1,6 @@
 [project]
 name = "surface-similarity-parameter"
-version = "1.0.0"
+version = "1.0.1"
 description = "Surface Similarity Parameter for Python"
 authors = [
   { name="Mathies Wedler", email="mathies.wedler@tuhh.de" },
