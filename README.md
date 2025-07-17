@@ -12,12 +12,16 @@ Wedler, M., Stender, M., Klein, M., Ehlers, S. and Hoffmann, N., 2022,  "Surface
 ---
 
 The Surface Similarity Parameter
+
 $$\mathrm{SSP}(\mathbf{y},\hat{\mathbf{y}})=\frac{\sqrt{\int|F_{\mathbf{y}}(\mathbf{k}) - F_{\hat{\mathbf{y}}}(\mathbf{k})|^2d\mathbf{k}}}{\sqrt{\int|F_{\mathbf{y}}(\mathbf{k})|^2d\mathbf{k}} + \sqrt{\int|F_{\hat{\mathbf{y}}}(\mathbf{k})|^2d\mathbf{k}}}\in[0,1]$$
+
 with $Y$ the Fourier transform of $y$, is a normalized error metric originally introduced by [Perlin and Bustamante (2016)](https://doi.org/10.1007/s10665-016-9849-7).
 The SSP quantifies the difference between two signals in the complex Fourier space, and thus inherently penalizes deviations in magnitude and phase in a single metric.
 
 For discrete signals, the SSP Equation collapses to
-$$\mathrm{SSP} = \frac{||Y-\hat{Y}||}{||Y|| + ||\hat{Y}||}\in[0, 1]$$.
+
+$$\mathrm{SSP} = \frac{||Y-\hat{Y}||}{||Y|| + ||\hat{Y}||}\in[0, 1].$$
+
 Being a normalized error, the SSP is defined in the range [0, 1], where
 - $\mathrm{SSP}=0$ indicates perfect agreement, and
 - $\mathrm{SSP}=1$ indicates perfect *disagreement* among the signals.
