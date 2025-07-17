@@ -33,7 +33,7 @@ authors:
     affiliation: 'M-14, TUHH'
 identifiers:
   - type: doi
-    value: 10.5281/zenodo.8032832
+    value: 10.5281/zenodo.16033049
     description: generated with Zenodo
 repository-code: >-
   https://github.com/MathiesW/2022-code-surface-similarity-parameter-ml-loss-metric
@@ -42,12 +42,13 @@ url: >-
 abstract: >-
   Surface Similarity Parameter machine learning loss metric
   for oscillatory spatio-temporal data. Implementations for
-  TensorFlow and Pytorch for one- and two-dimensional data
+  Keras3 and numpy.
 keywords:
   - deep learning
   - machine learning
   - loss function
+  - keras
   - tensorflow
-  - pytorch
+  - jax
   - error metric
 license: GPL-3.0
