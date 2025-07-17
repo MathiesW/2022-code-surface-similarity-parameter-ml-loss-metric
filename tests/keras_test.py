@@ -2,7 +2,8 @@ from keras import ops, layers, Sequential, random
 import pytest
 from itertools import product
 
-from ssp import SSP1D, SSP2D, fftfreq
+from ssp.keras import SSP1D, SSP2D
+from ssp.keras.ops import fftfreq
 
 
 NX: int = 512

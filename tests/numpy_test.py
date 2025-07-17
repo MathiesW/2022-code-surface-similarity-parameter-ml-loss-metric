@@ -1,4 +1,4 @@
-from ssp import ssp
+from ssp.numpy import ssp
 import numpy as np
 import pytest
 
