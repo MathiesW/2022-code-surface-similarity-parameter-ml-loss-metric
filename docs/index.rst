@@ -16,6 +16,7 @@ For discrete signals, Eq. :eq:`continuous` collapses to
    \mathrm{SSP} = \frac{||Y-\hat{Y}||}{||Y|| + ||\hat{Y}||}\in[0, 1].
 
 Being a normalized error, the SSP is defined in the range `[0, 1]`, where
+
 - :math:`\mathrm{SSP}=0` indicates perfect agreement, and
 - :math:`\mathrm{SSP}=1` indicates perfect *disagreement* among the signals.
 
