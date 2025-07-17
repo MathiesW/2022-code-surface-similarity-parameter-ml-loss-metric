@@ -10,12 +10,7 @@ python:
     - method: pip
       path: .
     - method: pip
-      packages:
-        - sphinx
-        - furo
-        - numpy
-        - keras
-        - tensorflow
+      requirements: docs/requirements.txt
 
 sphinx:
   configuration: docs/conf.py
