@@ -4,9 +4,8 @@ from keras.src.utils import io_utils
 
 class UseLossLowpassDecay(callbacks.Callback):
     """
-    UseLossLowpassDecay Callback
-
-    This callback updates the class variable loss.epoch to the current training epoch in order to allow a linear decay of the lowpass filter.
+    UseLossLowpassDecay Callback.
+    This callback updates the class variable `loss.epoch` to the current training epoch in order to allow a linear decay of the lowpass filter.
 
     """
 
@@ -17,8 +16,10 @@ class UseLossLowpassDecay(callbacks.Callback):
 
     def on_train_begin(self, logs=None):
         """
-        Check if loss function is supported and set loss.epoch=0
+        Check if loss function is supported and set `loss.epoch=0`
+
         """
+
         try:
             # set loss.epoch from None to 0
             self.model.loss.epoch = 0
@@ -28,7 +29,9 @@ class UseLossLowpassDecay(callbacks.Callback):
 
     def on_epoch_begin(self, epoch, logs=None):
         """
-        Update loss.epoch to the current training epoch
+        Update `loss.epoch` to the current training epoch
+
         """
+
         if self.supported_loss:
             self.model.loss.epoch = epoch

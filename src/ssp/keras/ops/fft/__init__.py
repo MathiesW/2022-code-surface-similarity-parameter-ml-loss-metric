@@ -23,14 +23,44 @@ def cast_to_complex(x: Union[Tuple[KerasTensor, KerasTensor], KerasTensor]) -> T
 class FFT(Operation):
     """
     Base 1-D fast Fourier transform (FFT) operation.
-
     Keras-backend-agnostic version of the FFT.
+
+    Notes
+    -----
+    Keras3 does not support complex dtypes.
+    Therefore, the `keras.ops.fft` is quite cumbersume to use, since it explicitly requires the definition of a real and a complex part when calling `fft` ::
+
+        >>> from keras import ops
+        >>> x = ops.ones((4,))
+        >>> ops.fft(x)
+        ValueError: The truth value of an array with more than one element is ambiguous. Use a.any() or a.all()
+        >>> ops.fft((x, ops.zeros_like(x)))
+        array([4.,  0.,  0.,  0.], dtype=float32), array([0., 0., 0., 0.], dtype=float32)
+    
+    This implementation attempts to increase the user-friendliness of the FFT call in Keras by handling the input automatically.
+
     """
+
     def __init__(self):
         super().__init__()
         self.fft_fn = fft_fn
 
     def compute_output_spec(self, x):
+        """
+        Compute output spec of Fourier transform
+
+        Parameters
+        ----------
+        x : KerasTensor | tuple | list
+            Real- or complex input to FFT. A complex input must be composed of a tuple or list of the real- and imaginary part `(x_real, x_imag)`.
+
+        Returns
+        -------
+        y_real_spec, y_imag_spec : (KerasTensor, KerasTensor)
+            spec of real- and imaginary part of `FFT(x)`
+
+        """
+
         if not isinstance(x, (tuple, list)) or len(x) != 2:
             real = x
             imag = ops.zeros_like(x)
@@ -51,13 +81,34 @@ class FFT(Operation):
         )
 
     def call(self, x):
+        """
+        Call method of FFT
+
+        Parameters
+        ----------
+        x : KerasTensor | tuple | list
+            Real- or complex input to FFT. A complex input must be composed of a tuple or list of the real- and imaginary part `(x_real, x_imag)`.
+
+        Returns
+        -------
+        y_real, y_imag : (KerasTensor, KerasTensor)
+            real- and imaginary part of `FFT(x)`
+
+        Notes
+        -----
+        The input can be either a KerasTensor or a tuple or list of length 2, containing the real- and imaginary part of `x`.
+
+        """
+
         return self.fft_fn(x)
     
 
 class FFT2(FFT):
     """
     2-D fast Fourier transform
+
     """
+
     def __init__(self):
         super.__init__()
         self.fft_fn = fft2_fn
@@ -66,7 +117,9 @@ class FFT2(FFT):
 class RFFT(FFT):
     """
     1-D fast Fourier transform for real-valued inputs
+
     """
+
     def __init__(self):
         super.__init__()
         self.fft_fn = rfft_fn
@@ -75,7 +128,9 @@ class RFFT(FFT):
 class RFFT2(FFT):
     """
     2-D fast Fourier transform for real-valued inputs
+
     """
+
     def __init__(self):
         super.__init__()
         self.fft_fn = rfft2_fn
@@ -85,7 +140,9 @@ class RFFT2(FFT):
 class IFFT(FFT):
     """
     1-D inverse fast Fourier transform
+
     """
+
     def __init__(self):
         super.__init__()
         self.fft_fn = ifft_fn
@@ -94,7 +151,9 @@ class IFFT(FFT):
 class IFFT2(FFT):
     """
     2-D inverse fast Fourier transform
+
     """
+
     def __init__(self):
         super.__init__()
         self.fft_fn = ifft2_fn
@@ -103,12 +162,29 @@ class IFFT2(FFT):
 class IRFFT(FFT):
     """
     1-D inverse fast Fourier transform for real-valued inputs
+
     """
+
     def __init__(self):
         super.__init__()
         self.fft_fn = irfft_fn
 
     def compute_output_spec(self, x):
+        """
+        Compute output spec of Fourier transform
+
+        Parameters
+        ----------
+        x : KerasTensor | tuple | list
+            Real- or complex input to FFT. A complex input must be composed of a tuple or list of the real- and imaginary part `(x_real, x_imag)`.
+
+        Returns
+        -------
+        y_real_spec : KerasTensor
+            spec of real part of `IRFFT(x)`
+
+        """
+
         if not isinstance(x, (tuple, list)) or len(x) != 2:
             real = x
             imag = ops.zeros_like(x)
@@ -129,7 +205,9 @@ class IRFFT(FFT):
 class IRFFT2(IRFFT):
     """
     2-D inverse fast Fourier transform for real-valued inputs
+
     """
+
     def __init__(self):
         super.__init__()
         self.fft_fn = irfft2_fn
@@ -141,14 +219,14 @@ def fft(x):
     """
     1-D fast Fourier transform
 
-    Parameter
-    ---------
-    x : array_like
-        input array, at least 1-D
+    Parameters
+    ----------
+    x : KerasTensor | tuple | list
+        Real- or complex input to FFT. A complex input must be composed of a tuple or list of the real- and imaginary part `(x_real, x_imag)`.
 
     Returns
     -------
-    y_real, y_imag : tuple
+    y_real, y_imag : (KerasTensor, KerasTensor)
         Tuple of real- and imaginary part of FFT(x).
 
     Examples
@@ -175,14 +253,14 @@ def fft2(x):
     """
     2-D fast Fourier transform
 
-    Parameter
-    ---------
-    x : array_like
-        input array, at least 2-D
+    Parameters
+    ----------
+    x : KerasTensor | tuple | list
+        Real- or complex input to FFT. A complex input must be composed of a tuple or list of the real- and imaginary part `(x_real, x_imag)`.
 
     Returns
     -------
-    y_real, y_imag : tuple
+    y_real, y_imag : (KerasTensor, KerasTensor)
         Tuple of real- and imaginary part of FFT2(x).
 
     Examples
@@ -213,14 +291,14 @@ def rfft(x):
     """
     1-D fast Fourier transform for real-valued inputs
 
-    Parameter
-    ---------
-    x : array_like
-        input array, at least 1-D
+    Parameters
+    ----------
+    x : KerasTensor
+        Real-valued input to FFT.
 
     Returns
     -------
-    y_real, y_imag : tuple
+    y_real, y_imag : (KerasTensor, KerasTensor)
         Tuple of real- and imaginary part of RFFT(x).
         Both have size (n // 1 + 1) given ops.shape(x) == n
 
@@ -246,14 +324,14 @@ def rfft2(x):
     """
     2-D fast Fourier transform for real-valued inputs
 
-    Parameter
-    ---------
-    x : array_like
-        input array, at least 2-D
+    Parameters
+    ----------
+    x : KerasTensor
+        Real-valued input to FFT.
 
     Returns
     -------
-    y_real, y_imag : tuple
+    y_real, y_imag : (KerasTensor, KerasTensor)
         Tuple of real- and imaginary part of RFFT2(x).
         Both have size (n, n // 1 + 1) given ops.shape(x) == (n, n)
 
@@ -290,14 +368,14 @@ def ifft(x):
     """
     1-D inverse fast Fourier transform
 
-    Parameter
-    ---------
-    x : array_like
-        input array, at least 1-D
+    Parameters
+    ----------
+    x : KerasTensor | tuple | list
+        Real- or complex input to FFT. A complex input must be composed of a tuple or list of the real- and imaginary part `(x_real, x_imag)`.
 
     Returns
     -------
-    y_real, y_imag : tuple
+    y_real, y_imag : (KerasTensor, KerasTensor)
         Tuple of real- and imaginary part of IFFT(x).
 
     """
@@ -311,14 +389,14 @@ def ifft2(x):
     """
     2-D inverse fast Fourier transform
 
-    Parameter
-    ---------
-    x : array_like
-        input array, at least 2-D
+    Parameters
+    ----------
+    x : KerasTensor | tuple | list
+        Real- or complex input to FFT. A complex input must be composed of a tuple or list of the real- and imaginary part `(x_real, x_imag)`.
 
     Returns
     -------
-    y_real, y_imag : tuple
+    y_real, y_imag : (KerasTensor, KerasTensor)
         Tuple of real- and imaginary part of IFFT2(x).
 
     """
@@ -332,14 +410,14 @@ def irfft(x, n: tuple = None):
     """
     1-D inverse fast Fourier transform for real-valued inputs
 
-    Parameter
-    ---------
-    x : array_like
-        input array, at least 1-D
+    Parameters
+    ----------
+    x : KerasTensor | tuple | list
+        Real- or complex input to FFT. A complex input must be composed of a tuple or list of the real- and imaginary part `(x_real, x_imag)`.
 
     Returns
     -------
-    y_real, y_imag : tuple
+    y_real, y_imag : (KerasTensor, KerasTensor)
         Tuple of real- and imaginary part of IRFFT(x).
         Both have size (n // 1 + 1) given ops.shape(x) == n
 
@@ -354,14 +432,14 @@ def irfft2(x, n: tuple = None):
     """
     2-D inverse fast Fourier transform for real-valued inputs
 
-    Parameter
-    ---------
-    x : array_like
-        input array, at least 2-D
+    Parameters
+    ----------
+    x : KerasTensor | tuple | list
+        Real- or complex input to FFT. A complex input must be composed of a tuple or list of the real- and imaginary part `(x_real, x_imag)`.
 
     Returns
     -------
-    y_real, y_imag : tuple
+    y_real, y_imag : (KerasTensor, KerasTensor)
         Tuple of real- and imaginary part of IRFFT(x).
         Both have size (n // 1 + 1, n) given ops.shape(x) == (n, n)
 

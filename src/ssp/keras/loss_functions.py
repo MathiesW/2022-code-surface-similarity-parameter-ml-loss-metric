@@ -15,15 +15,17 @@ def normalized_error(y_true, y_pred):
     Parameters
     ----------
     y_true : KerasTensor
-        ground truth signal
+        Ground truth signal
     y_pred : KerasTensor
-        predicted signal
+        Predicted signal
 
     Returns
     -------
     ssp : KerasTensor
         normalized error (SSP) between 'y_true' and 'y_pred'
+        
     """
+
     numerator = ops.linalg.norm(y_true - y_pred, axis=-1)
     denuminator = ops.add(
             ops.linalg.norm(y_true, axis=-1),
@@ -40,75 +42,71 @@ def normalized_error(y_true, y_pred):
 class SSP1D(FrequencyLossFunctionWrapper1D):
     """
     Surface Similarity Parameter for 1-D signals with an optional lowpass filter.
-
     The frequency filter helps the model to focus on the relevant frequency range without the need to, e.g., remove HF noise in additional preprocessing steps.
 
-    There are two lowpass filters to choose from, the "static" and the "adaptive" lowpass.
-    The "static" lowpass defines a global cut-off frequency at 'f_filter'.
-    The "adaptive" lowpass analyzes the ground truth data, extracts the peak frequency, and sets a dynamic cut-off frequency at for each sample.
-    The parameter 'f_filter' becomes a multiplier for the peak frequency, after which the frequency components are suppressed.
+    There are two lowpass filters to choose from, the `"static"` and the `"adaptive"` lowpass.
+    The `"static"` lowpass defines a global cut-off frequency at `f_filter`.
+    The `"adaptive"` lowpass analyzes the ground truth data, extracts the peak frequency, and sets a dynamic cut-off frequency at for each sample.
+    The parameter `f_filter` becomes a multiplier for the peak frequency, after which the frequency components are suppressed.
 
-    The definition of a lowpass {"static", "adaptive"} requires a frequency range 'f'.
-    It enables an additional step in the loss calculation, where 
-        1. the ground truth is transformed via 1-D FFT,
-        2. a hard binary lowpass filter is applied to the Fourier spectrum to set all frequencies f>f_filter to 0+0j,
-        3. the filtered ground truth is transformed back to its initial space.
-    If lowpass==None, the FFT calculation is skipped, and no 'f' is required.
+    The definition of a lowpass {`"static"`, `"adaptive"`} requires a frequency range `f`.
+    It enables an additional step in the loss calculation, where
+    (1) the ground truth is transformed via 1-D FFT, 
+    (2) a hard binary lowpass filter is applied to the Fourier spectrum to set all frequencies `f>f_filter` to (0+0j), 
+    (3) the filtered ground truth is transformed back to its initial space.
 
-    This class inherits from keras.losses.Loss and can thus be used directly in model.compile()
+    If `lowpass==None`, the FFT calculation is skipped, and no `f` is required.
+
+    This class inherits from keras.losses.Loss and can thus be used directly in keras.Model.compile()
 
     Parameters
     ----------
-    fn : callable
-        Definition of the loss function.
-        The function has to accept two tensors (y_true and y_pred) and return a float.
-    lowpass : str, optional {None, "static", "adaptive"}
-        Lowpass filter that is applied to the ground truth in order to suppress the higher frequency range 'f>f_filter'.
-        Defaults to None.
-    f : array_like, optional
+    lowpass : str, optional {`None`, `"static"`, `"adaptive"`}
+        Lowpass filter that is applied to the ground truth in order to suppress the higher frequency range `f>f_filter`.
+        Defaults to `None`.
+    f : KerasTensor, optional
         Frequency range for the data.
-        Is required once a lowpass {"static", "adaptive"} is used.
-        Defaults to None.
+        Is required once a lowpass {`"static"`, `"adaptive"`} is used.
+        Defaults to `None`.
     f_filter : float, optional
         Threshold for the lowpass filter.
-        With the static lowpass, the ground truth spectrum is set to 0+j0 for 'f>f_filter'.
-        With the adaptive lowpass, the ground truth spectrum is set to 0+j0 for 'f>f_p * f_filter',
-        where f_p is the peak frequency that is automatically derived from the ground truth spectrum.
+        With the static lowpass, the ground truth spectrum is set to 0+j0 for `f>f_filter`.
+        With the adaptive lowpass, the ground truth spectrum is set to 0+j0 for `f>f_filter*f_p`,
+        where `f_p` is the peak frequency that is automatically derived from the ground truth spectrum.
         Defaults to 6.0.
     f_min : float, optional
-        Cap for the lowest peak frequency for cases when the automatic estimation of the peak frequency fails (estimated 'f_p < 0' or 'f_p == NaN').
+        Cap for the lowest peak frequency for cases when the automatic estimation of the peak frequency fails (estimated `f_p<0` or `f_p` is Nan).
         Defaults to 0.0.
     p : float, optional
         Exponent to weigh the spectrum towards the peak frequency (for the estimation of the peak frequency), c.f. 
-            Mansard & Funke, "On the fitting of parametric models to measured wave spectra" (1988), and
-            Sobey & Young, "Hurricane Wind Waves---A discrete spectral model" (1986), https://ascelibrary.org/doi/10.1061/%28ASCE%290733-950X%281986%29112%3A3%28370%29
+        Mansard & Funke, "On the fitting of parametric models to measured wave spectra" (1988), and
+        Sobey & Young, "Hurricane Wind Waves---A discrete spectral model" (1986), https://ascelibrary.org/doi/10.1061/%28ASCE%290733-950X%281986%29112%3A3%28370%29.
         Defaults to 7.0.
-    decay_start : int, optional !!!Requires 'UseLossLowpassDecay' callback to work!!!
-        Epoch from which on the lowpass filter is linearly decreased from 0 to 'f_filter'.
+    decay_start : int, optional
+        Epoch from which on the lowpass filter is linearly decreased from 0 to `f_filter`.
         Defaults to 0.
-    decay_epochs : int, optional !!!Requires 'UseLossLowpassDecay' callback to work!!!
-        Number of epochs over which the lowpass filter is linearly decreased from 0 to 'f_filter'.
+        **Requires `UseLossLowpassDecay` callback to work, cf. Notes**
+    decay_epochs : int, optional
+        Number of epochs over which the lowpass filter is linearly decreased from 0 to `f_filter`.
         Defaults to 50.
-    data_format : str, optional {"channels_last", "channels_first"}
+        **Requires `UseLossLowpassDecay` callback to work, cf. Notes**
+    data_format : str, optional {`"channels_last"`, `"channels_first"`}
         The ordering of the dimensions in the inputs:
-        "channels_last" corresponds to inputs with shape (batch_size, *dims, channels), 
-        "channels_first" corresponds to inputs with shape (batch_size, channels, *dims).
-        Defaults to "channels_last".
-    reduction : str, optional {"sum_over_batch_size", "None", "auto", "sum"}
+        `"channels_last"` corresponds to inputs with shape `(batch_size, *dims, channels)`, 
+        `"channels_first"` corresponds to inputs with shape `(batch_size, channels, *dims)`.
+        Defaults to `"channels_last"`.
+    reduction : str, optional {`"sum_over_batch_size"`, `None`, `"auto"`, `"sum"`}
         Type of reduction to apply to the loss.
         In almost all cases this should be `"sum_over_batch_size"`.
         Supported options are `"sum"`, `"sum_over_batch_size"` or `None`.
     name : str, optional
-        Name of the loss function. Name is inhereted from class name if name=None.
-        Defaults to None.
-    **kwargs
-        Additional keyword arguments for fn.
+        Name of the loss function. The name is inhereted from class name if `name=None`.
+        Defaults to `None`.
 
     Notes
     -----
-    Both the "adaptive" and "static" lowpass filter can be linearly increased from 0 to f_filter over 'decay_epoch' epochs, starting at epoch 'decay_start'.
-    For this to work, the training has to be conducted using the 'UseLossLowpassDecay' callback, which sets the class variable 'self.epoch' to the current training epoch.
-    See examples of SSP1D and SSP2D for a MWE.
+    Both the `"adaptive"` and `"static"` lowpass filter can be linearly increased from 0 to `f_filter` over `decay_epoch` epochs, starting at epoch `decay_start`.
+    For this to work, the training has to be conducted using the `UseLossLowpassDecay` callback, which sets the class variable `self.epoch` to the current training epoch.
 
     Examples
     --------
@@ -123,7 +121,7 @@ class SSP1D(FrequencyLossFunctionWrapper1D):
     array(0.09801717, dtype=float32)
 
     
-    Usage in a ML training
+    Usage in an ML training
     
     >>> from ssp.keras import SSP1D
     >>> from keras import ops, Sequential, layers
@@ -137,7 +135,7 @@ class SSP1D(FrequencyLossFunctionWrapper1D):
     >>> model.fit(x=x, y=y, epochs=1)
 
     
-    Usage in an ML training with static lowpass (note that the lowpass does not make sense since we have a harmonic sine as y)
+    Usage in an ML training with static lowpass *(note that the lowpass does not make sense since we have a harmonic sine as input)*
 
     >>> from ssp.keras import SSP1D
     >>> from ssp.keras.ops import fftfreq
@@ -153,7 +151,7 @@ class SSP1D(FrequencyLossFunctionWrapper1D):
     >>> model.fit(x=x, y=y, epochs=1)
 
     
-    Usage in an ML training with adaptive lowpass (note that the lowpass does not make sense since we have a harmonic sine as y)
+    Usage in an ML training with adaptive lowpass *(note that the lowpass does not make sense since we have a harmonic sine as input)*
 
     >>> from ssp.keras import SSP1D
     >>> from ssp.keras.ops import fftfreq
@@ -169,7 +167,7 @@ class SSP1D(FrequencyLossFunctionWrapper1D):
     >>> model.fit(x=x, y=y, epochs=1)
 
     
-    Usage in an ML training with adaptive lowpass and decay callback (note that the lowpass does not make sense since we have a harmonic sine as y)
+    Usage in an ML training with adaptive lowpass and decay callback *(note that the lowpass does not make sense since we have a harmonic sine as y)*
 
     >>> from ssp.keras import SSP1D
     >>> from ssp.keras.callbacks import UseLossLowpassDecay
@@ -220,19 +218,20 @@ class SSP1D(FrequencyLossFunctionWrapper1D):
 
         Parameters
         ----------
-        real : KerasTensor
-            real part of Fourier transform of signal y
-        imag : KerasTensor
-            imaginary part of Fourier transform of signal y
+        y_true : KerasTensor
+            Ground truth signal
+        y_pred : KerasTensor
+            Predicted signal
 
         Returns
         -------
         y : KerasTensor
-            Surface Similarity Parameter between arrays y1 and y2.
+            Surface Similarity Parameter between arrays `y_true` and `y_pred`.
+            The shape is determined by `self.reduction`.
 
         Notes
         -----
-        With SSP, we remain in frequency domain and omit the ifft. 
+        The call method of `FrequencyLossFunctionWrapper1D` is overwritten, since with the SSP, we can remain in frequency domain and omit the ifft. 
         Magically, it is the same result if the SSP is applied in time- or frequency domain!
 
         """
@@ -265,76 +264,72 @@ class SSP1D(FrequencyLossFunctionWrapper1D):
 class SSP2D(FrequencyLossFunctionWrapper2D):
     """
     Surface Similarity Parameter for 2-D signals with an optional lowpass filter.
-
     The frequency filter helps the model to focus on the relevant frequency range without the need to, e.g., remove HF noise in additional preprocessing steps.
 
-    There are two lowpass filters to choose from, the "static" and the "adaptive" lowpass.
-    The "static" lowpass defines a global cut-off frequency at 'f_filter'.
-    The "adaptive" lowpass analyzes the ground truth data, extracts the peak frequency, and sets a dynamic cut-off frequency at for each sample.
-    The parameter 'f_filter' becomes a multiplier for the peak frequency, after which the frequency components are suppressed.
+    There are two lowpass filters to choose from, the `"static"` and the `"adaptive"` lowpass.
+    The `"static"` lowpass defines a global cut-off frequency at `f_filter`.
+    The `"adaptive"` lowpass analyzes the ground truth data, extracts the peak frequency, and sets a dynamic cut-off frequency at for each sample.
+    The parameter `f_filter` becomes a multiplier for the peak frequency, after which the frequency components are suppressed.
 
-    The definition of a lowpass {"static", "adaptive"} requires a frequency range 'f'.
-    It enables an additional step in the loss calculation, where 
-        1. the ground truth is transformed via 2-D FFT,
-        2. a hard binary lowpass filter is applied to the Fourier spectrum to set all frequencies f>f_filter to 0+0j,
-        3. the filtered ground truth is transformed back to its initial space.
-    If lowpass==None, the FFT calculation is skipped, and no 'f' is required.
+    The definition of a lowpass {`"static"`, `"adaptive"`} requires a frequency range `f`.
+    It enables an additional step in the loss calculation, where
+    (1) the ground truth is transformed via 1-D FFT, 
+    (2) a hard binary lowpass filter is applied to the Fourier spectrum to set all frequencies `f>f_filter` to (0+0j), 
+    (3) the filtered ground truth is transformed back to its initial space.
 
-    This class inherits from keras.losses.Loss and can thus be used directly in model.compile()
+    If `lowpass==None`, the FFT calculation is skipped, and no `f` is required.
+
+    This class inherits from keras.losses.Loss and can thus be used directly in keras.Model.compile()
 
     Parameters
     ----------
-    fn : callable
-        Definition of the loss function.
-        The function has to accept two tensors (y_true and y_pred) and return a float.
-    lowpass : str, optional {None, "static", "adaptive"}
-        Lowpass filter that is applied to the ground truth in order to suppress the higher frequency range 'f>f_filter'.
-        Defaults to None.
-    f : array_like, optional
+    lowpass : str, optional {`None`, `"static"`, `"adaptive"`}
+        Lowpass filter that is applied to the ground truth in order to suppress the higher frequency range `f>f_filter`.
+        Defaults to `None`.
+    f : KerasTensor, optional
         Frequency range for the data.
-        Is required once a lowpass {"static", "adaptive"} is used.
-        A 1-D f is automatically casted to a 2-D grid.
-        Defaults to None.
+        Is required once a lowpass {`"static"`, `"adaptive"`} is used.
+        A 1-D `f` is automatically casted to a 2-D grid.
+        Defaults to `None`.
     f_filter : float, optional
         Threshold for the lowpass filter.
-        With the static lowpass, the ground truth spectrum is set to 0+j0 for 'f>f_filter'.
-        With the adaptive lowpass, the ground truth spectrum is set to 0+j0 for 'f>f_p * f_filter',
-        where f_p is the peak frequency that is automatically derived from the ground truth spectrum.
+        With the static lowpass, the ground truth spectrum is set to 0+j0 for `f>f_filter`.
+        With the adaptive lowpass, the ground truth spectrum is set to 0+j0 for `f>f_filter*f_p`,
+        where `f_p` is the peak frequency that is automatically derived from the ground truth spectrum.
         Defaults to 6.0.
     f_min : float, optional
-        Cap for the lowest peak frequency for cases when the automatic estimation of the peak frequency fails (estimated 'f_p < 0' or 'f_p == NaN').
+        Cap for the lowest peak frequency for cases when the automatic estimation of the peak frequency fails (estimated `f_p<0` or `f_p` is Nan).
         Defaults to 0.0.
     p : float, optional
         Exponent to weigh the spectrum towards the peak frequency (for the estimation of the peak frequency), c.f. 
-            Mansard & Funke, "On the fitting of parametric models to measured wave spectra" (1988), and
-            Sobey & Young, "Hurricane Wind Waves---A discrete spectral model" (1986), https://ascelibrary.org/doi/10.1061/%28ASCE%290733-950X%281986%29112%3A3%28370%29
+        Mansard & Funke, "On the fitting of parametric models to measured wave spectra" (1988), and
+        Sobey & Young, "Hurricane Wind Waves---A discrete spectral model" (1986), https://ascelibrary.org/doi/10.1061/%28ASCE%290733-950X%281986%29112%3A3%28370%29.
         Defaults to 7.0.
-    decay_start : int, optional !!!Requires 'UseLossLowpassDecay' callback to work!!!
-        Epoch from which on the lowpass filter is linearly decreased from 0 to 'f_filter'.
+    decay_start : int, optional
+        Epoch from which on the lowpass filter is linearly decreased from 0 to `f_filter`.
         Defaults to 0.
-    decay_epochs : int, optional !!!Requires 'UseLossLowpassDecay' callback to work!!!
-        Number of epochs over which the lowpass filter is linearly decreased from 0 to 'f_filter'.
+        **Requires `UseLossLowpassDecay` callback to work, cf. Notes**
+    decay_epochs : int, optional
+        Number of epochs over which the lowpass filter is linearly decreased from 0 to `f_filter`.
         Defaults to 50.
-    data_format : str, optional {"channels_last", "channels_first"}
+        **Requires `UseLossLowpassDecay` callback to work, cf. Notes**
+    data_format : str, optional {`"channels_last"`, `"channels_first"`}
         The ordering of the dimensions in the inputs:
-        "channels_last" corresponds to inputs with shape (batch_size, *dims, channels), 
-        "channels_first" corresponds to inputs with shape (batch_size, channels, *dims).
-        Defaults to "channels_last".
-    reduction : str, optional {"sum_over_batch_size", "None", "auto", "sum"}
+        `"channels_last"` corresponds to inputs with shape `(batch_size, *dims, channels)`, 
+        `"channels_first"` corresponds to inputs with shape `(batch_size, channels, *dims)`.
+        Defaults to `"channels_last"`.
+    reduction : str, optional {`"sum_over_batch_size"`, `None`, `"auto"`, `"sum"`}
         Type of reduction to apply to the loss.
         In almost all cases this should be `"sum_over_batch_size"`.
         Supported options are `"sum"`, `"sum_over_batch_size"` or `None`.
     name : str, optional
-        Name of the loss function. Name is inhereted from class name if name=None.
-        Defaults to None.
-    **kwargs
-        Additional keyword arguments for fn.
+        Name of the loss function. The name is inhereted from class name if `name=None`.
+        Defaults to `None`.
 
     Notes
     -----
-    Both the "adaptive" and "static" lowpass filter can be linearly increased from 0 to f_filter over 'decay_epoch' epochs, starting at epoch 'decay_start'.
-    For this to work, the training has to be conducted using the 'UseLossLowpassDecay' callback, which sets the class variable 'self.epoch' to the current training epoch.
-    See examples of SSP1D and SSP2D for a MWE.
+    Both the `"adaptive"` and `"static"` lowpass filter can be linearly increased from 0 to `f_filter` over `decay_epoch` epochs, starting at epoch `decay_start`.
+    For this to work, the training has to be conducted using the `UseLossLowpassDecay` callback, which sets the class variable `self.epoch` to the current training epoch.
 
     Examples
     --------
@@ -350,7 +345,7 @@ class SSP2D(FrequencyLossFunctionWrapper2D):
     array(0.10495476, dtype=float32)
 
     
-    Usage in a ML training
+    Usage in an ML training
 
     >>> from ssp.keras import SSP2D
     >>> from keras import ops, Sequential, layers
@@ -453,24 +448,25 @@ class SSP2D(FrequencyLossFunctionWrapper2D):
 
         Parameters
         ----------
-        real : KerasTensor
-            real part of Fourier transform of signal y
-        imag : KerasTensor
-            imaginary part of Fourier transform of signal y
+        y_true : KerasTensor
+            Ground truth signal
+        y_pred : KerasTensor
+            Predicted signal
 
         Returns
         -------
         y : KerasTensor
-            Surface Similarity Parameter between arrays y1 and y2.
+            Surface Similarity Parameter between arrays `y_true` and `y_pred`.
+            The shape is determined by `self.reduction`.
 
         Notes
         -----
-        With SSP, we remain in frequency domain and omit the ifft2. 
+        The call method of `FrequencyLossFunctionWrapper2D` is overwritten, since with the SSP, we can remain in frequency domain and omit the ifft. 
         Magically, it is the same result if the SSP is applied in time- or frequency domain!
 
-        The 2-D implementation uses the same 'normalized_error' function as the 1-D implementation.
-        This is made possible by flattening the Fourier-transformer arrays along all dimensions that are not the batch dimension.
-        Then, the norm along the last (feature) axis is taken to calculate the SSP2D.
+        The 2-D implementation of the SSP uses the same `normalized_error` function as the 1-D implementation.
+        This is made possible by flattening the Fourier-transformed arrays along all dimensions that are not the batch dimension.
+        Then, the norm along the feature axis is taken to calculate the SSP2D.
 
         """
 

@@ -5,7 +5,9 @@ from math import pi
 
 def hard_lowpass(n, spectral_radius, truly_symmetric=False):
     """
-    1-D hard lowpass
+    1-D binary mask of shape `n` that can be multiplied with the FFT frequencies ::
+
+      hard_lowpass = [0, ..., 0, 1, ..., 1, 0, ..., 0]
 
     Parameters
     ----------
@@ -14,13 +16,13 @@ def hard_lowpass(n, spectral_radius, truly_symmetric=False):
     spectral_radius : int
         Width of the lowpass
     truly_symmetric : bool, optional
-        If this is set, ops.linspace is used insted of ops.arange to achieve a truly symmetric filter (for odd n).
-        Defaults to False.
+        If this is set, ops.linspace is used insted of ops.arange to achieve a truly symmetric filter (for odd `n`).
+        Defaults to `False`.
 
     Returns
     -------
-    hard_lowpass : array_like
-        Binary 1-D mask [0, ..., 0, 1, ..., 1, 0, ..., 0] of size (n,)
+    hard_lowpass : KerasTensor
+        Binary 1-D mask of size `(n,)`
 
     """
 
@@ -41,30 +43,30 @@ def hard_lowpass(n, spectral_radius, truly_symmetric=False):
 
 def circular_hard_lowpass(n, spectral_radius, truly_symmetric=False):
     """
-    2-D hard lowpass
+    2-D binary mask of shape `(n,n)` that can be multiplied with the FFT frequencies, e.g., ::
+
+      circular_hard_lowpass = [
+        [0, 0, 1, 0, 0],
+        [0, 1, 1, 1, 0],
+        [1, 1, 1, 1, 1],
+        [0, 1, 1, 1, 0],
+        [0, 0, 1, 0, 0]
+      ]
 
     Parameters
     ----------
     n : int
-        Grid size of the data, square grid (n,n)
+        Grid size of the data, square grid `(n,n)`
     spectral_radius : int
-        Radius of the lowpass on the (n.n) grid
+        Radius of the lowpass on the `(n,n)` grid
     truly_symmetric : bool, optional
-        If this is set, ops.linspace is used insted of ops.arange to achieve a truly symmetric filter (for odd n).
-        Defaults to False.
+        If this is set, ops.linspace is used insted of ops.arange to achieve a truly symmetric filter (for odd `n`).
+        Defaults to `False`.
 
     Returns
     -------
-    hard_lowpass : array_like
-        Binary 2-D mask, e.g.,
-        [
-            [0, 0, 1, 0, 0],
-            [0, 1, 1, 1, 0],
-            [1, 1, 1, 1, 1],
-            [0, 1, 1, 1, 0],
-            [0, 0, 1, 0, 0]
-        ]
-        of size (n,n)
+    hard_lowpass : KerasTensor
+        Binary 2-D mask of size `(n,n)`
 
     """
 
@@ -83,7 +85,7 @@ def circular_hard_lowpass(n, spectral_radius, truly_symmetric=False):
     return circular_hard_lowpass
 
 
-def fftfreq(n, d=1, rad=True):
+def fftfreq(n, d=1, rad=False):
     """
     Return the Discrete Fourier Transform sample frequencies.
 
@@ -101,15 +103,15 @@ def fftfreq(n, d=1, rad=True):
     n : int
         Window length.
     d : scalar, optional
-        Sample spacing (inverse of the sampling rate). Defaults to 1.
+        Sample spacing (inverse of the sampling rate). Defaults to `1`.
     rad : bool, optional
-        If this is set, the angular frequency omega=2*pi*f is returned.
-        Defaults to False.
+        If this is set, the angular frequency `omega=2*pi*f` is returned.
+        Defaults to `False`.
 
     Returns
     -------
-    f : array_like
-        Array of length `n` containing the sample frequencies.
+    f : KerasTensor
+        Tensor of length `n` containing the sample frequencies.
 
     Examples
     --------
@@ -135,9 +137,26 @@ def fftfreq(n, d=1, rad=True):
     return ops.roll(fft_freqs, shift=n // 2)
 
 
-def squeeze_or_expand_to_same_rank(x1: KerasTensor, x2: KerasTensor, axis: int = -1, expand_rank_1: bool = True) -> tuple:
+def squeeze_or_expand_to_same_rank(x1, x2, axis=-1, expand_rank_1: bool = True) -> tuple:
     """
-    Squeeze/expand last dim if ranks differ from expected by exactly 1.
+    Squeeze/expand along `axis` if ranks differ from expected by exactly 1.
+
+    Parameters
+    ----------
+    x1 : KerasTensor
+        first input tensor
+    x2 : KerasTensor
+        second input tensor
+    axis : int, optional
+        axis to squeeze or expand along. Defaults to `-1`.
+    expand_rank_1: bool, optional
+        Defaults to `True`
+
+    Returns
+    -------
+    x1, x2 : (KerasTensor, KerasTensor)
+        Tuple of `(x1, x2)` with the same shape
+
     """
 
     x1_rank = len(x1.shape)
