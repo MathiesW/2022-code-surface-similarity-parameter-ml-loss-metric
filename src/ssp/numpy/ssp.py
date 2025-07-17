@@ -1,25 +1,6 @@
 import numpy as np
 
 
-def sobolev_norm(x):
-    """
-    Sobolev / L2 norm along last axis by means of np.linalg.norm
-
-    Parameters
-    ----------
-    x : array_like
-        Input array. Must be either 1-D or 2-D
-
-    Returns
-    -------
-    n : float or ndarray
-        Norm of the matrix or vector(s).
-
-    """
-
-    return np.linalg.norm(x, axis=-1)
-
-
 def ssp(x1, x2, batched=False):
     """
     Surface Similarity Parameter (SSP) without any fuzz, cf. https://doi.org/10.1007/s10665-016-9849-7.
@@ -95,8 +76,8 @@ def ssp(x1, x2, batched=False):
         x2 = np.ravel(x2)
 
     # get numerator and denuminator
-    numerator = sobolev_norm(x1 - x2)
-    denum = sobolev_norm(x1) + sobolev_norm(x2)
+    numerator = np.linalg.norm(x1 - x2, axis=-1)
+    denum = np.linalg.norm(x1, axis=-1) + np.linalg.norm(x2, axis=-1)
 
     return np.divide(
         numerator,
