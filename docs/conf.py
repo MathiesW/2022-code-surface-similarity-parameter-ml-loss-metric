@@ -22,10 +22,12 @@ master_doc = 'index'
 
 extensions = [
     'sphinx.ext.autodoc',
+    'sphinx.ext.viewcode',
     'sphinx.ext.autosummary',
     'sphinx.ext.napoleon'
 ]
 
+html_show_sourcelink = True
 autosummary_generate = True
 autodoc_default_options = {
     'members': True,
