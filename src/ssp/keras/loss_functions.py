@@ -55,7 +55,7 @@ class SSP1D(FrequencyLossFunctionWrapper1D):
     (2) a hard binary lowpass filter is applied to the Fourier spectrum to set all frequencies `f>f_filter` to (0+0j), 
     (3) the filtered ground truth is transformed back to its initial space.
 
-    If `lowpass==None`, the FFT calculation is skipped, and no `f` is required.
+    If `lowpass is None`, the FFT calculation is skipped, and no `f` is required.
 
     This class inherits from keras.losses.Loss and can thus be used directly in keras.Model.compile()
 
@@ -277,7 +277,7 @@ class SSP2D(FrequencyLossFunctionWrapper2D):
     (2) a hard binary lowpass filter is applied to the Fourier spectrum to set all frequencies `f>f_filter` to (0+0j), 
     (3) the filtered ground truth is transformed back to its initial space.
 
-    If `lowpass==None`, the FFT calculation is skipped, and no `f` is required.
+    If `lowpass is None`, the FFT calculation is skipped, and no `f` is required.
 
     This class inherits from keras.losses.Loss and can thus be used directly in keras.Model.compile()
 
