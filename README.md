@@ -2,7 +2,9 @@
 [![DOI](https://zenodo.org/badge/653051819.svg)](https://zenodo.org/badge/latestdoi/653051819)
 [![Tests](https://github.com/MathiesW/2022-code-surface-similarity-parameter-ml-loss-metric/actions/workflows/release.yaml/badge.svg)](https://github.com/MathiesW/2022-code-surface-similarity-parameter-ml-loss-metric/actions/workflows/release.yaml)
 [![PyPI](https://img.shields.io/pypi/v/surface-similarity-parameter)](https://pypi.org/project/surface-similarity-parameter/)
+[![Docs](https://app.readthedocs.org/projects/2022-code-surface-similarity-parameter-ml-loss-metric/badge/?version=latest)](https://2022-code-surface-similarity-parameter-ml-loss-metric.readthedocs.io/en/latest/index.html)
 [![License](https://img.shields.io/github/license/MathiesW/2022-code-surface-similarity-parameter-ml-loss-metric)](https://github.com/MathiesW/2022-code-surface-similarity-parameter-ml-loss-metric?tab=GPL-3.0-1-ov-file)
+
 
 ## Introduction
 This repository contains the code for the Surface Similarity Parameter (SSP) loss metric proposed in
@@ -47,6 +49,7 @@ This is beneficial when
 - the relevant dynamics are within a certain frequency band, or
 - the model is trained on noisy (measurement) data.
 
+
 ## Installation
 The package is hosted on [PyPI.org](https://pypi.org/project/surface-similarity-parameter/) and can be installed via pip
 ```
@@ -61,6 +64,10 @@ Note that the Keras backend
 - [JAX](https://docs.jax.dev/en/latest/)
 
 has to be manually installed. **At the moment, there is no implementation for the `'torch'` backend**.
+
+
+## Documentation
+The full documentation is available at [Read the Docs](https://2022-code-surface-similarity-parameter-ml-loss-metric.readthedocs.io/en/latest/index.html).
 
 
 ## Usage examples
