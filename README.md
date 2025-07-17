@@ -2,7 +2,7 @@
 [![DOI](https://zenodo.org/badge/653051819.svg)](https://zenodo.org/badge/latestdoi/653051819)
 [![Tests](https://github.com/MathiesW/2022-code-surface-similarity-parameter-ml-loss-metric/actions/workflows/release.yaml/badge.svg)](https://github.com/MathiesW/2022-code-surface-similarity-parameter-ml-loss-metric/actions/workflows/release.yaml)
 [![PyPI](https://img.shields.io/pypi/v/surface-similarity-parameter)](https://pypi.org/project/surface-similarity-parameter/)
-[![Docs](https://app.readthedocs.org/projects/2022-code-surface-similarity-parameter-ml-loss-metric/badge/?version=latest)](https://2022-code-surface-similarity-parameter-ml-loss-metric.readthedocs.io/en/latest/index.html)
+[![Docs](https://app.readthedocs.org/projects/2022-code-surface-similarity-parameter-ml-loss-metric/badge/?version=latest)](https://2022-code-surface-similarity-parameter-ml-loss-metric.readthedocs.io/en/latest/)
 [![License](https://img.shields.io/github/license/MathiesW/2022-code-surface-similarity-parameter-ml-loss-metric)](https://github.com/MathiesW/2022-code-surface-similarity-parameter-ml-loss-metric?tab=GPL-3.0-1-ov-file)
 
 
@@ -67,7 +67,7 @@ has to be manually installed. **At the moment, there is no implementation for th
 
 
 ## Documentation
-The full documentation is available at [Read the Docs](https://2022-code-surface-similarity-parameter-ml-loss-metric.readthedocs.io/en/latest/index.html).
+The full documentation is available at [Read the Docs](https://2022-code-surface-similarity-parameter-ml-loss-metric.readthedocs.io/en/latest/).
 
 
 ## Usage examples
