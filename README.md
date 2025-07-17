@@ -15,7 +15,7 @@ Wedler, M., Stender, M., Klein, M., Ehlers, S. and Hoffmann, N., 2022,  "Surface
 
 The Surface Similarity Parameter
 
-$$\mathrm{SSP}(\mathbf{y},\hat{\mathbf{y}})=\frac{\sqrt{\int|F_{\mathbf{y}}(\mathbf{k}) - F_{\hat{\mathbf{y}}}(\mathbf{k})|^2d\mathbf{k}}}{\sqrt{\int|F_{\mathbf{y}}(\mathbf{k})|^2d\mathbf{k}} + \sqrt{\int|F_{\hat{\mathbf{y}}}(\mathbf{k})|^2d\mathbf{k}}}\in[0,1]$$
+$$\mathrm{SSP}(\mathbf{y},\hat{\mathbf{y}})=\frac{\sqrt{\int|Y - \hat{Y}|^2df}}{\sqrt{\int|Y|^2df} + \sqrt{\int|\hat{Y}|^2df}}\in[0,1]$$
 
 with $Y$ the Fourier transform of $y$, is a normalized error metric originally introduced by [Perlin and Bustamante (2016)](https://doi.org/10.1007/s10665-016-9849-7).
 The SSP quantifies the difference between two signals in the complex Fourier space, and thus inherently penalizes deviations in magnitude and phase in a single metric.
