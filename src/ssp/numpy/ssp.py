@@ -19,11 +19,11 @@ def ssp(x1, x2, batched=False):
     Returns
     -------
     ssp : ndarray
-        Surface Similarity Parameter between arrays x1 and x2.
+        Surface Similarity Parameter between arrays `x1` and `x2`.
 
     Notes
     -----
-    The result is always within [0, 1] with
+    The result is always within `[0, 1]` with
         - 0 indicating perfect agreement, and
         - 1 indicating perfect disagreement.
     `Perfect disagreement` in terms of SSP means either
