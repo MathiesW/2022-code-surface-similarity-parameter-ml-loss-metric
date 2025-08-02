@@ -49,6 +49,13 @@ This is beneficial when
 - the relevant dynamics are within a certain frequency band, or
 - the model is trained on noisy (measurement) data.
 
+The *static* lowpass simply cuts of the frequency range at a static value `f_filter` that is passed to the constructor of the SSP loss function.
+
+The *adaptive* filter is more advanced and allows to automatically derive the peak frequency of the ground truth data and adjust the cut-off frequency based on that.
+With `lowpass="adaptive"`, the argument `f_filter` becomes a multiplier for the internally derived peak frequency `f_p`, and the cut-off frequency becomes `f_p * f_filter`.
+
+**NOTE** To use either of these options, the instance of the SSP loss function has to know the frequency range the data lives on. The frequencies have to be passed to the constructor of the loss function as the argument `f`.
+The package offers the helper function `ssp.keras.ops.fftfreq`, which generates the FFT frequency range based on the number of grid points and the discretization of the data. The additional argument `rad` can be set to get angular frequencies, cf. [docs for `fftfreq`](https://2022-code-surface-similarity-parameter-ml-loss-metric.readthedocs.io/en/latest/ssp.keras.ops.helper.html#ssp.keras.ops.helper.fftfreq).
 
 ## Installation
 The package is hosted on [PyPI.org](https://pypi.org/project/surface-similarity-parameter/) and can be installed via pip
