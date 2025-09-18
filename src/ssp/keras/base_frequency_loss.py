@@ -3,7 +3,7 @@ from keras.src.losses.loss import Loss
 from keras.src.saving import serialization_lib
 from keras.src.backend.config import backend
 from .ops import hard_lowpass, circular_hard_lowpass, squeeze_or_expand_to_same_rank
-from .ops.fft import fft, fft2, ifft, ifft2
+from keras_fft import fft, fft2, ifft, ifft2
 from keras import KerasTensor
 from functools import partial
 
