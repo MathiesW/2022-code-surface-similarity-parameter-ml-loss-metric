@@ -1,5 +1,4 @@
 from keras import ops
-from keras import KerasTensor
 from math import pi
 
 
