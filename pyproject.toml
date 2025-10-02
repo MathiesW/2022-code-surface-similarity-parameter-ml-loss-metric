@@ -8,8 +8,7 @@ authors = [
 readme = "README.md"
 requires-python = ">=3.8"
 dependencies = [
-  "numpy",
-  "keras-fft"
+  "numpy"
 ]
 license = { text = "GPL-3.0-or-later" }
 classifiers = [
@@ -20,7 +19,8 @@ classifiers = [
 
 [project.optional-dependencies]
 keras = [
-  "keras>=3.0.0"
+  "keras>=3.0.0",
+  "keras-fft"
 ]
 
 [build-system]
