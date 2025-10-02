@@ -2,4 +2,5 @@ sphinx
 furo
 numpy
 keras
+keras-fft
 tensorflow
